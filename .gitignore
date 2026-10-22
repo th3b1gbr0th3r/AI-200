@@ -1,0 +1,8 @@
+# Credenciales locales (solo para Claude, nunca al repo)
+github.mb
+*.mb
+.env
+.env.*
+*.pem
+*.key
+.claude/settings.local.json
