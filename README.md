@@ -11,3 +11,4 @@ Documentación, notas y laboratorios del curso **AI-200: Developing** (Microsoft
 | `notas/` | Apuntes sueltos |
 | `.claude/agents/` | Agente `oscar` de apoyo Azure + DevOps |
 | `sesiones/` | Registro de cada sesión de trabajo |
+| `docs/aprendizajes.md` | Un aprendizaje por día (skill `/aprender`) |
