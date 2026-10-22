@@ -6,3 +6,7 @@ github.mb
 *.pem
 *.key
 .claude/settings.local.json
+
+# Material con copyright del curso (solo local)
+*.pdf
+*.pptx

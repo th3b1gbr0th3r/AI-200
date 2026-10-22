@@ -15,22 +15,35 @@
 ## Qué cubre
 Alojar aplicaciones en contenedores, crear APIs sin servidor con Functions, integrar servicios por eventos y mensajes (Service Bus, Event Grid), trabajar con datos para IA (Cosmos DB NoSQL, PostgreSQL con pgvector, Azure Managed Redis para caché, streaming y búsqueda vectorial) y construir apps seguras, escalables y observables.
 
-## Módulos (Microsoft Learn)
-Títulos deducidos de los identificadores de Learn; confirmar con el campus.
+## Prerrequisitos oficiales
+- Contenedorización de apps (nivel básico) y servicios de datos de Azure (nivel básico)
+- Fundamentos de agentes y modelos de IA
+- Al menos 2 años de Python
+- Familiaridad con Azure CLI
 
-| # | Módulo (uid) | Foco | Afinidad con K8s |
-|---|---|---|---|
-| 1 | implement-container-app-hosting-azure | Alojar apps en contenedores | Alta |
-| 2 | deploy-manage-apps-azure-container-apps | Azure Container Apps | Alta |
-| 3 | deploy-monitor-apps-azure-kubernetes-service | AKS: despliegue y monitorización | Muy alta |
-| 4 | develop-ai-solutions-azure-cosmos-db | Cosmos DB para IA | Media |
-| 5 | develop-ai-solutions-azure-database-postgresql | PostgreSQL + pgvector | Media |
-| 6 | enhance-ai-solutions-azure-managed-redis | Managed Redis: caché, streaming, vectores | Media |
-| 7 | integrate-backend-services-ai-solutions | Functions, Service Bus, Event Grid | Baja (zona de desarrollo) |
-| 8 | manage-app-secrets-configuration | Key Vault, App Configuration, identidades | Alta |
-| 9 | observe-troubleshoot-apps | Monitor, App Insights, diagnóstico | Alta |
+Para un perfil SysOps/K8s: contenedores y CLI cubiertos; reforzar **Python** y los SDKs de Azure.
 
-Prioridad de estudio para un perfil SysOps/K8s: dedicar más tiempo a los módulos 4–7 (datos para IA y mensajería), que son los más nuevos.
+## Calendario (5 días, 9 learning paths)
+| Día | Learning paths | Afinidad con K8s |
+|---|---|---|
+| 1 | 01 Alojamiento de apps en contenedores · 02 Azure Container Apps | Alta |
+| 2 | 03 Desplegar y monitorizar en AKS · 04 Cosmos DB for NoSQL para IA | Muy alta · Media |
+| 3 | 05 Azure Database for PostgreSQL (pgvector) · 06 Azure Managed Redis | Media |
+| 4 | 07 Integrar servicios backend (Functions, Service Bus, Event Grid) · 08 Secretos y configuración | Baja (desarrollo) · Alta |
+| 5 | 09 Observar y diagnosticar apps | Alta |
+
+## Examen AI-200: Developing AI Cloud Solutions on Azure
+| Área | Peso |
+|---|---|
+| Soluciones en contenedores | 20-25% |
+| Soluciones de IA con servicios de datos | 25-30% |
+| Conectar y consumir servicios de Azure | 20-25% |
+| Seguridad, monitorización y troubleshooting | 20-25% |
+
+Prioridad: las áreas de datos para IA y de conexión de servicios son donde más tiempo dedicar (las más de desarrollo).
+
+## Material
+El contenido está en Microsoft Learn y en el entorno de labs del curso. Las diapositivas del instructor (PDF) son material con copyright y no se publican en el repo; se guardan solo en local.
 
 ## Docente
 Pendiente de decidir qué datos se publican.
