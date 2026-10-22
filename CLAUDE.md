@@ -7,3 +7,6 @@ Repo de documentación y labs del curso AI-200 (Microsoft). El usuario es SysOps
 - `github.mb` contiene credenciales de GitHub: está en `.gitignore`, **nunca** subirlo, mostrarlo ni copiarlo a la URL del remote. Para push usar cabecera temporal (`git -c http.extraHeader=...`) sin guardar el token en `.git/config`.
 - Estructura: `docs/00-plan` (plan y temario), `docs/modulos` (notas por módulo), `labs/` (prácticas con IaC), `notas/` (apuntes sueltos).
 - Los labs crean recursos con coste: confirmar antes de desplegar y limpiar al terminar.
+
+## Guías oficiales de labs
+Índice en `docs/00-plan/labs-oficiales.md` (fuente: https://microsoftlearning.github.io/mslearn-azure-ai/). Al ayudar con un lab, abrir la guía oficial correspondiente con WebFetch para seguir los mismos pasos que el alumno.
