@@ -21,7 +21,7 @@ Objetivo: que cada día quede **al menos un aprendizaje** escrito con palabras d
    ```
 4. **Actualizar la sesión** `sesiones/AAAA-MM-DD-<tema>.md` (crearla si no existe): qué se hizo, decisiones, estado, pendientes. Enlaza el aprendizaje.
 5. **Comprobar seguridad** antes de subir: sin credenciales, IDs de suscripción/tenant, endpoints con claves, datos personales de terceros ni material con copyright. El repo es público.
-6. **Commit y push** con el patrón del repo (token en cabecera temporal, nunca en `.git/config`).
+6. **Una rama y una PR por día de curso.** Rama `dia-NN-AAAA-MM-DD` desde `main` actualizado; commit; push con el patrón del repo (token en cabecera temporal, nunca en `.git/config`); abrir la PR contra `main` con `gh pr create` usando `.github/pull_request_template.md` (`GH_TOKEN` solo inline en el comando). No hacer merge: lo decide el usuario. Volver a `main` al terminar.
 7. Si el aprendizaje es una preferencia o acuerdo de trabajo, guárdalo también en la memoria.
 
 ## Reglas
