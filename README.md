@@ -9,4 +9,5 @@ Documentación, notas y laboratorios del curso **AI-200: Developing** (Microsoft
 | `docs/modulos/` | Notas por módulo |
 | `labs/` | Prácticas con Bicep/CLI |
 | `notas/` | Apuntes sueltos |
-| `.claude/agents/` | Agente de apoyo Azure + DevOps |
+| `.claude/agents/` | Agente `oscar` de apoyo Azure + DevOps |
+| `sesiones/` | Registro de cada sesión de trabajo |
