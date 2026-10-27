@@ -23,7 +23,8 @@ Alojar aplicaciones en contenedores, crear APIs sin servidor con Functions, inte
 
 Para un perfil SysOps/K8s: contenedores y CLI cubiertos; reforzar **Python** y los SDKs de Azure.
 
-## Calendario (5 días, 9 learning paths)
+## Calendario previsto del temario (5 días, 9 learning paths)
+Reparto teórico del temario oficial; el ritmo real está en la sección siguiente.
 | Día | Learning paths | Afinidad con K8s |
 |---|---|---|
 | 1 | 01 Alojamiento de apps en contenedores · 02 Azure Container Apps | Alta |
@@ -31,6 +32,20 @@ Para un perfil SysOps/K8s: contenedores y CLI cubiertos; reforzar **Python** y l
 | 3 | 05 Azure Database for PostgreSQL (pgvector) · 06 Azure Managed Redis | Media |
 | 4 | 07 Integrar servicios backend (Functions, Service Bus, Event Grid) · 08 Secretos y configuración | Baja (desarrollo) · Alta |
 | 5 | 09 Observar y diagnosticar apps | Alta |
+
+## Calendario real de las clases
+Las clases son **dos días por semana (martes y jueves)**, por Zoom, de 18:00 a 22:00 con un descanso de ~20 min. Cada clase se guarda en `sesiones/` y su contenido en `docs/modulos/` y `labs/`.
+
+| Sesión | Fecha | Contenido | Estado |
+|---|---|---|---|
+| 1 | jue 22/10/2026 | Presentación del curso | Hecha — `sesiones/2026-10-22-*.md` |
+| 2 | mar 27/10/2026 | LP1 Alojamiento en contenedores: ACR Tasks y App Service (labs 1 y 2) | Hecha — `sesiones/2026-10-27-*.md`, `labs/lp1-01-*`, `labs/lp1-02-*` |
+| 3 | jue 29/10/2026 | Corrección del knowledge check del LP1; LP2 Azure Container Apps | Estimada |
+| 4+ | mar 03/11 y siguientes | LP3 AKS y el resto de learning paths | Estimada |
+
+- Las fechas de las sesiones 3 en adelante se deducen del patrón martes/jueves y de lo que adelantó el docente (Container Apps la siguiente clase, después AKS); **hay que confirmarlas**.
+- El número total de clases y el reparto por learning path pueden diferir de la previsión de 5 días: en las dos primeras sesiones solo se ha cubierto la presentación y el LP1.
+- Cada learning path se guardará con el mismo formato: nota de módulo en `docs/modulos/NN-*.md`, labs en `labs/lpN-NN-*/README.md` (objetivo, diagrama, comandos explicados, resultados, incidencias) y acta en `sesiones/`.
 
 ## Examen AI-200: Developing AI Cloud Solutions on Azure
 | Área | Peso |

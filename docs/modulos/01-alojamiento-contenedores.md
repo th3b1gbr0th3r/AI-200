@@ -53,11 +53,54 @@ Resumen propio de la presentación del instructor (no se reproduce el material c
 | M2-2 Que la URL de staging no pase a producción | **A** · slot setting | Los slot settings no viajan en el swap |
 
 ## Labs de este bloque
-1. [Build and run a container image with ACR Tasks](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/01-acr-tasks.html) (~30 min)
-2. [Deploy a container to Azure App Service](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/02-app-svc-container.html) (~30 min)
+1. [Build and run a container image with ACR Tasks](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/01-acr-tasks.html) (~30 min) — hecho: `labs/lp1-01-acr-tasks/`
+2. [Deploy a container to Azure App Service](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/02-app-svc-container.html) (~30 min) — hecho hasta el paso 12: `labs/lp1-02-app-service/`
 3. [Sidecar con modelo local](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/03-app-svc-sidecar.html) (extra; confirmar si se hace)
 
 ## Preguntas de discusión en grupo (para preparar)
 - ¿Qué va en la imagen y qué se externaliza como configuración? ¿Cambia para cargas de IA (rutas de modelo, API keys, flags)?
 - ¿Qué guardarraíles evitan errores de tag, puerto o slot antes de llegar a producción?
 - Mutable (tags estables, settings editables) vs inmutable (digests, imágenes bloqueadas): cuándo cada uno.
+
+## Notas de la clase del 27/10/2026 (a partir de la transcripción de Zoom)
+Resumen propio del contenido técnico y organizativo; sin nombres de personas. La transcripción automática es ruidosa y no se publica.
+
+**Organización del curso**
+- Ahora los *módulos* son *lecciones* y la presentación completa es el *learning path*. El LP1 tiene 2 lecciones; los 3 primeros learning paths de los 9 son de contenedores.
+- Siguiente: LP2 Azure Container Apps (el día siguiente); después AKS (LP3). Las 4 preguntas del knowledge check se corrigen al empezar la siguiente clase.
+- Sesiones de 18:00 a 22:00 con descanso de ~20 min. A partir del lab 4-5 se empieza a tocar código; hasta entonces son comandos.
+- Los labs duran 2 h, **no se pueden guardar** y al finalizar el laboratorio en la plataforma se desprovisionan los recursos (el coste lo asume el proveedor). Aun así se recomienda borrar el resource group como práctica. "Finalizar" marca el lab como completado; "Descartar" se usa si falló o no hubo tiempo.
+- El docente recomienda **no memorizar comandos** (caen en el examen, pero los tests de práctica los cubren) y usar el portal para localizar visualmente ACR, repositorios, tags/digests, plan y asignaciones de rol.
+- El perfil del curso se registra en Microsoft Learn el último día.
+
+**ACR**
+- "Docker Hub de Azure": almacén central de imágenes y artefactos OCI (también charts de Helm), integrado con AKS, Container Apps y App Service. Servicio PaaS: no hay infraestructura que gestionar.
+- Dominio `<nombre>.azurecr.io`; registry → repositorio → artefacto. Referencia por tag (mutable) o por digest (inmutable).
+- Tiers: Basic (pruebas, hardware limitado), Standard (producción) y Premium (**geo-replicación**: la imagen cerca de los servicios que la consumen). Sin Premium, el ACR vive en una sola región y despliegues a otras regiones tiran de ahí con más latencia.
+- ACR Tasks también sirve para **probar** una imagen, no para ejecutarla en producción.
+- Se bloquean las imágenes en producción para evitar borrados y se usan políticas de retención.
+
+**App Service**
+- Plan de precios = esqueleto de cómputo: Basic escala solo de forma manual; en Premium hay autoescalado por reglas. El número de *deployment slots* depende del plan.
+- Slots: p. ej. producción y desarrollo/testing sobre los mismos recursos, con URL propia; swap entre slots y reparto de tráfico por porcentaje (p. ej. 90/10) para despliegues graduales. No es obligatorio usarlos.
+- Se puede desplegar en modo integrado en una VNet propia si se quiere acceso privado.
+- Un contenedor personalizado no declara lenguaje: es una imagen que se despliega tal cual (hay que vigilar la versión del runtime que lleve dentro).
+- Comando de arranque: sustituye al comando del Dockerfile. Puerto: 80/8080 por defecto, configurable con `WEBSITES_PORT`. TLS lo termina la plataforma.
+- Almacenamiento: por defecto efímero; opciones persistentes (se ampliarán en AKS: disco y Azure Files).
+- Always On evita la descarga a los ~20 min de inactividad; el health check se lanza cada minuto y saca de rotación las instancias que fallan.
+- Observabilidad (se amplía en el último módulo): logs de contenedor, log stream, sitio SCM/Kudu, envío a Log Analytics con KQL, Application/Container Insights.
+- Referencias a Key Vault desde los app settings: se verán en algún lab.
+
+**Identidad gestionada**
+- Cada recurso autenticado con Entra puede tener una identidad gestionada: la plataforma genera el token y el servicio destino (ACR, Storage, base de datos) lo valida; no hace falta Key Vault para ello. Se concede el permiso en el IAM del recurso destino (aquí, `AcrPull` sobre el ACR). Hay system-assigned y user-assigned.
+- Se verifica en el portal: ACR → Control de acceso (IAM) → Asignaciones de roles, donde aparece la web app con `AcrPull`.
+
+**Problemas de los labs observados en la clase**
+- El lab usa una **suscripción compartida por todo el grupo**: aparecen cuotas por región. Si el plan falla con cuota 0, cambiar de región (la guía recomienda `canadacentral` en el lab 2 y `eastus` en el lab 1) y escribirla en minúsculas y sin espacios.
+- `az login`: elegir cuenta de trabajo o escuela (no personal); la ventana puede quedar detrás de VS Code (minimizar). Si falla, repetir el comando; en último caso reiniciar la máquina virtual o relanzar el lab.
+- Extraer el zip del lab en una carpeta propia (p. ej. `C:\lab`) y abrir esa carpeta en VS Code, para que las rutas relativas del script funcionen.
+- Si se edita mal el SKU de la línea 224 de `azdeploy.py` (hay que sustituir el valor `P0v3` por `B1`, sin tocar la clave `--sku`), la opción 2 del menú falla.
+- El fichero `.env.ps1` lo genera el script al ejecutar la opción 2; sin cargarlo, los comandos siguientes fallan.
+- Los comandos de la guía están en PowerShell; en otras plataformas de labs cambia la sintaxis.
+- Un `az ... --acr-use-identity` puede imprimir un aviso de "no credential" aunque haya funcionado: comprobar el resultado.
+- El `az` de los pasos puede fallar a la primera; repetir una o dos veces.

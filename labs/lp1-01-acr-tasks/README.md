@@ -5,6 +5,43 @@ Material de partida: `acr-tasks-python.zip` (https://github.com/MicrosoftLearnin
 
 Ejecutado en Linux (bash) contra la suscripción temporal del lab. La plataforma del curso da los mismos pasos en PowerShell.
 
+## Objetivo
+Usar **ACR Tasks** para construir y gestionar una imagen de contenedor **íntegramente en la nube**, sin Docker local: crear un registry, construir y publicar una imagen, probarla, versionarla con tags y protegerla contra cambios.
+
+Al terminar debes ser capaz de explicar: qué es un registry/repositorio/tag/digest, por qué el digest es inmutable y el tag no, qué ejecuta realmente `az acr build` y `az acr run`, y cómo se bloquea una imagen de producción.
+
+## Qué se construye
+```
+ tu terminal (az CLI)
+      │  az acr build ./api            (sube Dockerfile + app.py, 1,2 KiB)
+      ▼
+ ┌────────────────────────────┐        ┌──────────────────────────────────────┐
+ │ Agente efímero de ACR Tasks│ push ─►│ ACR  acr<hash>.azurecr.io  (Basic)   │
+ │ (build, run; sin caché)    │        │  └ inference-api                      │
+ └────────────────────────────┘        │      ├ v1.0.0  sha256:7525…  (bloqueada)│
+      ▲  az acr run (pull + ejecuta)   │      └ v1.1.0  sha256:ae0b…           │
+      └────────────────────────────────┴──────────────────────────────────────┘
+        todo dentro de un resource group (rg-ai200-acr), en eastus
+```
+- **Registry** = almacén (no ejecuta nada). **ACR Tasks** = cómputo efímero que construye y ejecuta.
+- La app (`api/app.py`) es una API Flask de inferencia simulada; el Dockerfile la empaqueta con Python 3.11.
+
+## Fases del lab
+| Fase | Qué haces | Qué demuestra |
+|---|---|---|
+| 1. Despliegue | `azdeploy.py` crea el resource group y el ACR | El registry es un servicio PaaS: sin infraestructura que gestionar |
+| 2. Build | `az acr build` v1.0.0 | Build en entorno controlado (respuesta del knowledge check 1) |
+| 3. Verificación | listar repos, tags y manifests | Tag = puntero mutable; digest = huella inmutable (knowledge check 2) |
+| 4. Prueba | `az acr run` con `python -c 'from app import app'` | La imagen arranca; la ejecuta un agente de Tasks, no el registry |
+| 5. Versionado | segundo build v1.1.0 | Mismo código ≠ mismo digest; se comparten las capas de la base |
+| 6. Protección | `--write-enabled false` sobre v1.0.0 | Guardarraíl contra sobrescritura (falta `--delete-enabled false` para impedir el borrado) |
+| 7. Cleanup | `az group delete` | Se borra todo de una vez |
+
+## Cómo se relaciona con lo que ya sabes (K8s) y con el examen
+- Un tag en `image:` de un Deployment equivale a un tag mutable; `image: repo@sha256:…` fija el artefacto exacto.
+- ACR Tasks es un mini CI gestionado (runner efímero, run con ID, triggers por commit, cron o cambio de imagen base).
+- Examen (contenedores, 20-25 %): ACR Tasks quick build, digest frente a tag, `acr purge`, tiers Basic/Standard/Premium (geo-replicación solo en Premium).
+
 ## Qué hay en el material de partida
 - `api/Dockerfile`: `python:3.11-slim` + Flask, copia `app.py`, `ENV APP_VERSION/MODEL_VERSION`, `EXPOSE 5000`, `CMD ["python","app.py"]`.
 - `api/app.py`: API Flask simulada de inferencia (`/`, `/health`, `/predict`) que lee su versión de variables de entorno y escucha en `0.0.0.0:5000`.
@@ -45,6 +82,26 @@ az acr repository show --name $ACR_NAME --image inference-api:v1.0.0
 # Cleanup (ejecutado: el grupo solo contenía el ACR; comprobado con az group exists = false)
 az group delete --name rg-ai200-acr --no-wait --yes
 ```
+
+## Comandos explicados
+
+| # | Comando | Qué hace | Por qué / concepto |
+|---|---|---|---|
+| 1 | `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` | Hace que `az` use el almacén de certificados del sistema | Solo si un proxy corporativo re-firma TLS; `az` trae su propio bundle de Python y no confía en esa CA |
+| 2 | `az provider register --namespace Microsoft.ContainerRegistry` | Activa el proveedor de recursos de ACR en la suscripción | Una suscripción no puede crear recursos de un servicio hasta registrar su proveedor (aquí ya estaba `Registered`) |
+| 3 | `python3 azdeploy.py` | Crea el resource group y un ACR Basic; escribe `.env` | Envuelve `az group create` y `az acr create --sku Basic`. El nombre del ACR sale de un hash del ID de usuario |
+| 4 | `source .env` | Carga `RESOURCE_GROUP`, `ACR_NAME`, `LOCATION` en la sesión | Hay que repetirlo en cada terminal nueva |
+| 5 | `az acr build --registry $ACR_NAME --image inference-api:v1.0.0 ./api` | Sube `./api`, construye la imagen en un agente de ACR Tasks y la sube al registry | Sin Docker local; build en entorno controlado. Genera una run (`ca1`) |
+| 6 | `az acr repository list --name $ACR_NAME -o table` | Lista los repositorios | Muestra `inference-api` |
+| 7 | `az acr repository show-tags --name $ACR_NAME --repository inference-api -o table` | Lista los tags del repositorio | El tag es una referencia mutable |
+| 8 | `az acr manifest list-metadata --registry $ACR_NAME --name inference-api -o table` | Muestra digest, arquitectura, tamaño y fechas de cada manifest | El digest `sha256:…` identifica el contenido y es inmutable; coincide con el del push |
+| 9 | `az acr run --registry $ACR_NAME --cmd "<imagen> python -c 'from app import app'" /dev/null` | Arranca un contenedor de la imagen en un agente de Tasks y ejecuta el comando | Prueba que la app importa sin desplegarla. `/dev/null` = contexto de origen vacío. Run `ca2` |
+| 10 | `az acr build … --image inference-api:v1.1.0 ./api` | Segunda versión del mismo código | Digest distinto aunque el código no cambie (builds no reproducibles); solo se ahorra tiempo de push por las capas compartidas. Run `ca3` |
+| 11 | `az acr task list-runs --registry $ACR_NAME -o table` | Historial de runs | Tipo manual, estado y duración de `ca1`, `ca2`, `ca3` |
+| 12 | `az acr repository update --name $ACR_NAME --image inference-api:v1.0.0 --write-enabled false` | Bloquea la escritura del tag | Impide sobrescribirlo; no impide borrarlo (`deleteEnabled` sigue `true`) |
+| 13 | `az acr repository show --name $ACR_NAME --image inference-api:v1.0.0` | Muestra los atributos del tag | Comprobar `writeEnabled: false` |
+| 14 | `az group delete --name rg-ai200-acr --no-wait --yes` | Borra el resource group y todo lo que contiene | `--no-wait` lo deja en segundo plano |
+| 15 | `az group exists --name rg-ai200-acr` | Comprueba si existe | `false` cuando el borrado terminó |
 
 ## Resultados
 
