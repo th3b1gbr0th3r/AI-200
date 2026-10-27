@@ -83,25 +83,108 @@ az acr repository show --name $ACR_NAME --image inference-api:v1.0.0
 az group delete --name rg-ai200-acr --no-wait --yes
 ```
 
-## Comandos explicados
+## Comandos al detalle
 
-| # | Comando | Qué hace | Por qué / concepto |
-|---|---|---|---|
-| 1 | `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` | Hace que `az` use el almacén de certificados del sistema | Solo si un proxy corporativo re-firma TLS; `az` trae su propio bundle de Python y no confía en esa CA |
-| 2 | `az provider register --namespace Microsoft.ContainerRegistry` | Activa el proveedor de recursos de ACR en la suscripción | Una suscripción no puede crear recursos de un servicio hasta registrar su proveedor (aquí ya estaba `Registered`) |
-| 3 | `python3 azdeploy.py` | Crea el resource group y un ACR Basic; escribe `.env` | Envuelve `az group create` y `az acr create --sku Basic`. El nombre del ACR sale de un hash del ID de usuario |
-| 4 | `source .env` | Carga `RESOURCE_GROUP`, `ACR_NAME`, `LOCATION` en la sesión | Hay que repetirlo en cada terminal nueva |
-| 5 | `az acr build --registry $ACR_NAME --image inference-api:v1.0.0 ./api` | Sube `./api`, construye la imagen en un agente de ACR Tasks y la sube al registry | Sin Docker local; build en entorno controlado. Genera una run (`ca1`) |
-| 6 | `az acr repository list --name $ACR_NAME -o table` | Lista los repositorios | Muestra `inference-api` |
-| 7 | `az acr repository show-tags --name $ACR_NAME --repository inference-api -o table` | Lista los tags del repositorio | El tag es una referencia mutable |
-| 8 | `az acr manifest list-metadata --registry $ACR_NAME --name inference-api -o table` | Muestra digest, arquitectura, tamaño y fechas de cada manifest | El digest `sha256:…` identifica el contenido y es inmutable; coincide con el del push |
-| 9 | `az acr run --registry $ACR_NAME --cmd "<imagen> python -c 'from app import app'" /dev/null` | Arranca un contenedor de la imagen en un agente de Tasks y ejecuta el comando | Prueba que la app importa sin desplegarla. `/dev/null` = contexto de origen vacío. Run `ca2` |
-| 10 | `az acr build … --image inference-api:v1.1.0 ./api` | Segunda versión del mismo código | Digest distinto aunque el código no cambie (builds no reproducibles); solo se ahorra tiempo de push por las capas compartidas. Run `ca3` |
-| 11 | `az acr task list-runs --registry $ACR_NAME -o table` | Historial de runs | Tipo manual, estado y duración de `ca1`, `ca2`, `ca3` |
-| 12 | `az acr repository update --name $ACR_NAME --image inference-api:v1.0.0 --write-enabled false` | Bloquea la escritura del tag | Impide sobrescribirlo; no impide borrarlo (`deleteEnabled` sigue `true`) |
-| 13 | `az acr repository show --name $ACR_NAME --image inference-api:v1.0.0` | Muestra los atributos del tag | Comprobar `writeEnabled: false` |
-| 14 | `az group delete --name rg-ai200-acr --no-wait --yes` | Borra el resource group y todo lo que contiene | `--no-wait` lo deja en segundo plano |
-| 15 | `az group exists --name rg-ai200-acr` | Comprueba si existe | `false` cuando el borrado terminó |
+Convenciones: `az` = Azure CLI; `$VAR` = variable cargada con `source .env`; `-o table` = salida en tabla en lugar de JSON.
+
+### 1. `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt`
+```
+export  REQUESTS_CA_BUNDLE  =  /etc/ssl/certs/ca-certificates.crt
+  │            │                          │
+  │            │                          └ fichero con las CAs de confianza del sistema
+  │            └ variable que lee la librería Python "requests" (la que usa az)
+  └ la hereda cualquier proceso que lances desde este shell
+```
+- **Qué hace:** hace que `az` confíe en las CAs del sistema operativo en lugar de las de su propio bundle de Python.
+- **Por qué:** un proxy corporativo que intercepta TLS re-firma los certificados con su propia CA. El sistema ya confía en ella (la instaló la empresa); `az` no, y falla con `SSLCertVerificationError … self-signed certificate in certificate chain`.
+- **Detalles:** solo dura lo que dure el shell (para hacerlo permanente, añadirlo a `~/.bashrc`); no desactiva la verificación TLS; `curl` no lo necesita porque ya usa el almacén del sistema; sin proxy no hace falta.
+
+### 2. `az provider register --namespace Microsoft.ContainerRegistry`
+```
+az   provider   register   --namespace Microsoft.ContainerRegistry
+│       │          │                    └ proveedor de recursos (el "paquete" de API de ACR)
+│       │          └ acción: activarlo en la suscripción
+│       └ grupo de comandos sobre proveedores de recursos
+└ CLI
+```
+- **Qué hace:** registra el proveedor de recursos de ACR en la suscripción. Es asíncrono: devuelve enseguida y termina en segundo plano.
+- **Por qué:** una suscripción no puede crear recursos de un servicio hasta que su proveedor está registrado.
+- **Comprobación:** `az provider show -n Microsoft.ContainerRegistry --query registrationState -o tsv` → `Registered` (en el lab ya lo estaba, así que fue un trámite).
+
+### 3. `python3 azdeploy.py`
+- **Antes:** se editan solo `rg = "rg-ai200-acr"` y `location = "eastus"` (la región exigida por el lab).
+- **Qué hace por dentro:** pregunta a Azure quién eres (`az ad signed-in-user show`), calcula el nombre del ACR (`acr` + 8 hex de un SHA-1 del ID de usuario, p. ej. `acrdfbe0335`) y ejecuta, en silencio, el equivalente a:
+  ```bash
+  az group create --name rg-ai200-acr --location eastus
+  az acr create --resource-group rg-ai200-acr --name acrdfbe0335 --sku Basic
+  ```
+  Después escribe `.env` y `.env.ps1` con `RESOURCE_GROUP`, `ACR_NAME` y `LOCATION`.
+- **Por qué un hash:** los nombres de ACR son únicos globalmente y así sale uno estable por usuario.
+- **Salida esperada:** `Resource group created`, `ACR created: acr…`, `Login server: acr….azurecr.io` y `Deployment Complete!`.
+- **Error típico:** `can't open file 'azdeploy.py'` = ejecutado desde otra carpeta; hay que estar en `labs/lp1-01-acr-tasks`.
+
+### 4. `source .env`
+- **Qué hace:** ejecuta el fichero en el shell actual. Contiene líneas `export RESOURCE_GROUP="…"`, `export ACR_NAME="…"`, `export LOCATION="…"`.
+- **Por qué `source` y no `./.env`:** ejecutarlo como programa crearía un subshell y las variables morirían con él; `source` las deja en tu sesión.
+- **Comprobación:** `echo $ACR_NAME`. Hay que repetirlo en cada terminal nueva. Una errata (`$ACR_NAM`) devuelve vacío sin error.
+
+### 5. `az acr build --registry $ACR_NAME --image inference-api:v1.0.0 ./api`
+```
+az acr build  --registry $ACR_NAME   --image inference-api:v1.0.0   ./api
+                    │                         │            │          └ contexto de origen: carpeta con el Dockerfile
+                    │                         │            └ tag (mutable)
+                    │                         └ nombre del repositorio dentro del registry
+                    └ registry destino
+```
+- **Qué hace:** empaqueta `./api` (1,2 KiB), lo sube, y un **agente efímero de ACR Tasks** construye la imagen y la publica en tu registry. No hay Docker local.
+- **Fases de la salida:** `Packing source code…` → `Queued a build with ID: ca1` (Run ID) → `Waiting for an agent…` → login al registry → `Step 1/8 … Step 8/8` (una capa por instrucción del Dockerfile) → `Pushed` por capa → `digest: sha256:7525…` → bloque de dependencias (imagen base con su digest) → `Run ID: ca1 was successful after 29s`.
+- **Ruido que se ignora:** avisos de pip (`running as root`, `new release of pip`).
+- **Por qué:** build en un entorno controlado, sin el "en mi máquina funciona" (respuesta del knowledge check 1).
+
+### 6. `az acr repository list --name $ACR_NAME -o table`
+- **Qué hace:** lista los repositorios del registry. Aquí: `inference-api`.
+- **Ojo con el flag:** en los comandos `repository`, `--name` es el **registry**; el repositorio va en `--repository` o en `--image`.
+
+### 7. `az acr repository show-tags --name $ACR_NAME --repository inference-api -o table`
+- **Qué hace:** lista los tags del repositorio (`v1.0.0`, luego también `v1.1.0`).
+- **Concepto:** un tag es un puntero mutable; varios tags pueden apuntar al mismo contenido.
+
+### 8. `az acr manifest list-metadata --registry $ACR_NAME --name inference-api -o table`
+- **Qué hace:** una fila por manifest con Digest, Architecture (`amd64`), Os (`linux`), ImageSize (≈50 MB comprimidos), CreatedTime y LastUpdateTime.
+- **Ojo con el flag:** aquí `--registry` es el registry y `--name` es el **repositorio** (al revés que en `repository`).
+- **Concepto:** el digest `sha256:…` identifica el contenido y es inmutable; debe coincidir con el que imprimió el `push`. Aviso `acr manifest is in preview`: se ignora.
+
+### 9. `az acr run --registry $ACR_NAME --cmd "$ACR_NAME.azurecr.io/inference-api:v1.0.0 python -c 'from app import app'" /dev/null`
+```
+--cmd "  <imagen>                                       <comando dentro del contenedor>  "   /dev/null
+          └ de qué imagen arrancar el contenedor          └ importa app.py y sale             └ contexto de origen vacío
+```
+- **Qué hace:** un agente de Tasks hace `pull` de la imagen, arranca un contenedor temporal y ejecuta el comando. Es un `docker run` hecho en la nube (`kubectl run --image=… -- python -c …` en K8s).
+- **Salida:** `Unable to find image … locally` (el agente es nuevo), siete capas descargadas, mismo digest `7525…`, `Run ID: ca2 was successful`. No imprime nada de la app: código de salida 0 = éxito; si faltara Flask o hubiera un error, verías el traceback y la run acabaría en `Failed`.
+- **Idea clave:** el registry solo almacena; quien ejecuta es ACR Tasks. `/dev/null` es obligatorio porque `az acr run` exige un contexto.
+
+### 10. `az acr build … --image inference-api:v1.1.0 ./api`
+- **Qué hace:** repite el build con otro tag (run `ca3`).
+- **Lo que se observó:** **digest distinto** (`ae0b67f4…`) con el mismo código: los builds de Docker no son reproducibles (la capa de `pip install` y la fecha de creación de la configuración cambian). Tiempo de build similar (el agente no tiene caché); el `push` es más rápido porque las tres capas de la base salen como `Layer already exists`.
+
+### 11. `az acr task list-runs --registry $ACR_NAME -o table`
+- **Qué hace:** historial de runs: RUN ID (`ca3`, `ca2`, `ca1`), TASK (vacío = quick task), PLATFORM, STATUS, TRIGGER (`Manual`), STARTED y DURATION.
+- **Para qué:** diagnosticar builds fallidos; con el ID se ven los logs (`az acr task logs --registry $ACR_NAME --run-id <id>`).
+
+### 12. `az acr repository update --name $ACR_NAME --image inference-api:v1.0.0 --write-enabled false`
+- **Qué hace:** cambia los atributos del tag. `--image` lleva `repositorio:tag`.
+- **Atributos:** `writeEnabled` (sobrescribir), `deleteEnabled` (borrar), `listEnabled`, `readEnabled`.
+- **Salida:** devuelve el JSON actualizado con `writeEnabled: false`.
+- **Matiz de examen:** esto impide sobrescribir, **no** borrar; una protección completa añade `--delete-enabled false`.
+
+### 13. `az acr repository show --name $ACR_NAME --image inference-api:v1.0.0`
+- **Qué hace:** muestra el JSON del tag: `changeableAttributes`, `digest`, `createdTime`, `lastUpdateTime`, `signed: false`.
+- **Detalle:** `lastUpdateTime` no cambia al modificar atributos (refleja el contenido); `signed: false` = sin firma de contenido (otra función).
+
+### 14. `az group delete --name rg-ai200-acr --no-wait --yes` y `az group exists --name rg-ai200-acr`
+- `--name`: grupo a borrar. `--yes`: sin pedir confirmación. `--no-wait`: devuelve el control y borra en segundo plano.
+- Borra **todo** lo que contiene el grupo (aquí solo el ACR). Antes de lanzarlo conviene listar el contenido con `az resource list -g rg-ai200-acr -o table`.
+- `az group exists` devuelve `true` mientras borra (el grupo figura como `Deleting`) y `false` al terminar.
 
 ## Resultados
 
