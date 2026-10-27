@@ -1,0 +1,89 @@
+# Lab LP1-01 · Build and run a container image with ACR Tasks
+
+Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/01-acr-tasks.html
+Material de partida: `acr-tasks-python.zip` (https://github.com/MicrosoftLearning/mslearn-azure-ai/raw/main/downloads/python/acr-tasks-python.zip). No se versiona aquí: descargar y descomprimir en esta carpeta (`azdeploy.py` + `api/`).
+
+Ejecutado en Linux (bash) contra la suscripción temporal del lab. La plataforma del curso da los mismos pasos en PowerShell.
+
+## Qué hay en el material de partida
+- `api/Dockerfile`: `python:3.11-slim` + Flask, copia `app.py`, `ENV APP_VERSION/MODEL_VERSION`, `EXPOSE 5000`, `CMD ["python","app.py"]`.
+- `api/app.py`: API Flask simulada de inferencia (`/`, `/health`, `/predict`) que lee su versión de variables de entorno y escucha en `0.0.0.0:5000`.
+- `azdeploy.py`: crea el resource group y un ACR Basic (nombre `acr` + 8 hex de un SHA-1 del ID de usuario) y escribe `.env` / `.env.ps1`. Solo se editan `rg` y `location`.
+
+## Comandos ejecutados (en orden)
+
+```bash
+# Entorno (proxy corporativo: ver notas/2026-10-27-guia-az-login-lab.md)
+export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
+# Despliegue (rg=rg-ai200-acr, región=eastus, la que exige el lab)
+az provider register --namespace Microsoft.ContainerRegistry
+python3 azdeploy.py
+source .env
+
+# 1. Build en la nube (sin Docker local)
+az acr build --registry $ACR_NAME --image inference-api:v1.0.0 ./api
+
+# 2. Verificar
+az acr repository list --name $ACR_NAME --output table
+az acr repository show-tags --name $ACR_NAME --repository inference-api --output table
+az acr manifest list-metadata --registry $ACR_NAME --name inference-api --output table
+
+# 3. Probar la imagen en un agente de ACR Tasks
+az acr run --registry $ACR_NAME \
+  --cmd "$ACR_NAME.azurecr.io/inference-api:v1.0.0 python -c 'from app import app'" /dev/null
+
+# 4. Segunda versión
+az acr build --registry $ACR_NAME --image inference-api:v1.1.0 ./api
+az acr repository show-tags --name $ACR_NAME --repository inference-api --output table
+az acr task list-runs --registry $ACR_NAME --output table
+
+# 5. Bloquear v1.0.0 y comprobarlo
+az acr repository update --name $ACR_NAME --image inference-api:v1.0.0 --write-enabled false
+az acr repository show --name $ACR_NAME --image inference-api:v1.0.0
+
+# Cleanup (ejecutado: el grupo solo contenía el ACR; comprobado con az group exists = false)
+az group delete --name rg-ai200-acr --no-wait --yes
+```
+
+## Resultados
+
+| Run | Comando | Resultado | Duración |
+|---|---|---|---|
+| ca1 | `az acr build` v1.0.0 | OK | 29 s |
+| ca2 | `az acr run` | OK (import sin error = código de salida 0) | 17-19 s |
+| ca3 | `az acr build` v1.1.0 | OK | 22-23 s |
+
+| Tag | Digest | ImageSize |
+|---|---|---|
+| v1.0.0 | `sha256:752592a49358be33934fdcb1cd467250608ac3df32ffa9f97958819bc2bf4ba7` | 52 609 261 |
+| v1.1.0 | `sha256:ae0b67f44eda3958c9b002f3e98b03398783b28d1364761d1b268e774f275499` | 52 609 243 |
+
+Tras el bloqueo: `writeEnabled: false`, `deleteEnabled: true`.
+
+## Cómo funciona (lo que se aprendió)
+
+**Registry ≠ cómputo.** El registry solo almacena y sirve imágenes. `az acr build` y `az acr run` los ejecutan agentes efímeros de **ACR Tasks** (misma familia de servicio, otra función). Analogía: ACR Tasks es un mini CI gestionado (runner efímero, run con ID, triggers por commit, cron o cambio de imagen base). Un pipeline de Azure DevOps o GitHub Actions orquesta y puede delegar el build con `az acr build`.
+
+**Salida del build.** Empaqueta `./api` y lo sube → encola la run (`Run ID`) → el agente hace login al registry → ejecuta cada paso del Dockerfile (una capa por instrucción) → `push` de capas → imprime el digest y las dependencias (imagen base con su digest, base de los triggers de imagen base).
+
+**`az acr run`.** El argumento de `--cmd` es `<imagen> <comando>`: el agente hace `pull` de la imagen y ejecuta el comando dentro de un contenedor temporal. El `/dev/null` final es el contexto de origen, obligatorio pero vacío.
+
+**Tag vs digest.** Mismo código, dos builds → **digests distintos** (la capa de `pip install` y la fecha de creación de la config no son reproducibles). Por eso `v1.1.0` no es "v1.0.0 renombrada", y por eso se despliega por digest para fijar el artefacto exacto.
+
+**Caché.** El agente es efímero y no conserva caché: el segundo build vuelve a bajar la base y a ejecutar `pip install` (tiempos de build similares). Lo que se ahorra es el `push`: las capas de la base salen como `Layer already exists` (12,3 s → 5,9 s).
+
+**Bloqueo.** `--write-enabled false` impide sobrescribir el tag; no impide borrarlo (`deleteEnabled` sigue en `true`). Una protección real de producción añade `--delete-enabled false`. `signed: false`: la firma de contenido es otra función, no se practica aquí.
+
+## Respuestas del knowledge check del módulo 1
+1. Builds inconsistentes en workstations → **ACR Tasks quick build**.
+2. Misma versión en todos los nodos aunque se reutilice el tag → referenciar **por digest del manifest**.
+
+## Incidencias y soluciones
+| Problema | Causa | Solución |
+|---|---|---|
+| `az login` → `SSLCertVerificationError` | Proxy corporativo que re-firma TLS; `az` usa su bundle de Python | `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` (no desactivar la verificación) |
+| `az login -u -p` → `AADSTS50126` | Lo entregado era un Temporary Access Pass, no una contraseña | `az login --use-device-code` en ventana de incógnito y TAP en el navegador |
+| `az account show` sin sesión | Login hecho con cuenta personal | Repetir con la cuenta del lab |
+| `python3: can't open file azdeploy.py` | Se ejecutó desde la carpeta equivocada | `cd labs/lp1-01-acr-tasks` |
+| Región | El lab exige `eastus` (la plataforma lo indica) | `location = "eastus"` |
