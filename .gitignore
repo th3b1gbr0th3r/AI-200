@@ -10,3 +10,11 @@ github.mb
 # Material con copyright del curso (solo local)
 *.pdf
 *.pptx
+
+# Material de partida descargado de Microsoft y paquetes del curso (solo local; cada README del lab indica la URL de descarga)
+labs/*/api/
+labs/*/azdeploy.py
+labs/*/document.txt
+labs/*/*.zip
+docs/*.zip
+docs/Links*.txt
