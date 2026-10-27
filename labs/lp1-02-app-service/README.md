@@ -63,6 +63,36 @@ az webapp config appsettings list -g $RESOURCE_GROUP -n $APP_NAME -o table
 az group delete --name rg-ai200-appsvc --no-wait --yes
 ```
 
+## Comandos explicados
+
+| # | Comando | Qué hace | Por qué / concepto |
+|---|---|---|---|
+| 1 | Edición de `azdeploy.py` (`rg`, `location`, línea 224 `--sku`) | Fija grupo y región (`canadacentral`) y cambia el SKU del plan de `P0v3` a `B1` | El lab restringe regiones y SKUs. El script imprime `P0v3` aunque el plan real sea `B1` (texto fijo) |
+| 2 | `az provider register --namespace Microsoft.ContainerRegistry` y `Microsoft.Web` | Activa los proveedores de ACR y App Service | Requisito previo de la suscripción |
+| 3 | `python3 azdeploy.py` → opción 1 | Crea el resource group, el ACR (`--admin-enabled false`) y construye `docprocessor:v1` | Es `az group create` + `az acr create` + `az acr build` (como el lab 1) |
+| 4 | `python3 azdeploy.py` → opción 2 | Crea el App Service plan Linux `B1` y escribe `.env` | El plan es la capacidad (node pool); `--is-linux` es obligatorio para contenedores Linux |
+| 5 | `source .env` | Carga `RESOURCE_GROUP`, `ACR_NAME`, `APP_PLAN`, `APP_NAME`, `LOCATION` | Necesario para los comandos siguientes |
+| 6 | `az webapp create --resource-group $RESOURCE_GROUP --plan $APP_PLAN --name $APP_NAME --container-image-name $ACR_NAME.azurecr.io/docprocessor:v1` | Crea la web app en el plan, apuntando a la imagen | La app queda `Running` pero **no puede hacer pull**: sin identidad (`identity: null`) ni configuración de contenedor |
+| 7 | `az webapp identity assign …` | Crea la identidad system-assigned de la app | "Quién soy": un service principal en Entra ligado al ciclo de vida de la app |
+| 8 | `PRINCIPAL_ID=$(az webapp identity show … --query principalId -o tsv)` | Guarda el ID de esa identidad en una variable | `-o tsv` devuelve el valor sin comillas ni JSON |
+| 9 | `ACR_ID=$(az acr show … --query id -o tsv)` | Guarda el ID completo del ACR | Se usará como `--scope` |
+| 10 | `az role assignment create --assignee $PRINCIPAL_ID --scope $ACR_ID --role AcrPull` | Concede a la identidad permiso de solo descarga sobre ese ACR | "Qué puedo hacer": mínimo privilegio. Puede tardar 1-2 min en propagarse |
+| 11 | `az webapp config set … --acr-use-identity true --acr-identity '[system]'` | La app usa su identidad system-assigned para el pull | Pone `acrUseManagedIdentityCreds=true`; sin usuario ni contraseña de ACR |
+| 12 | `az webapp config container set … --container-image-name … --container-registry-url https://$ACR_NAME.azurecr.io` | Guarda imagen y registry en la configuración | Rellena `linuxFxVersion=DOCKER\|<imagen>`. El aviso "Retrieving credentials failed" es esperable: no hay admin |
+| 13 | `az webapp config appsettings set … --settings WEBSITES_PORT=80` | Indica el puerto del contenedor | Imprescindible si no escucha en 80/8080; aquí ya es 80 |
+| 14 | `az webapp config appsettings set … --settings WEBSITES_ENABLE_APP_SERVICE_STORAGE=true` | Monta `/home` como almacenamiento persistente | Ruta fija; sin esto los JSON de `/home/processed` se pierden al reiniciar |
+| 15 | `az webapp config set … --always-on true` | Evita la descarga por inactividad (~20 min) | Requiere Basic o superior |
+| 16 | `az webapp log config … --docker-container-logging filesystem` | Activa los logs de stdout/stderr del contenedor | Hay que activarlo explícitamente; `log show` no lo refleja bien |
+| 17 | `APP_URL=$(az webapp show … --query defaultHostName -o tsv)` | Obtiene el hostname público | `https://$APP_URL` |
+| 18 | `curl -X POST "https://$APP_URL/process" -H "Content-Type: text/plain" --data-binary @document.txt` | Envía el documento | Devuelve estadísticas reales y análisis simulado; `"saved": true` confirma la escritura en `/home/processed` |
+| 19 | `curl https://$APP_URL/documents` | Lista los documentos guardados | `count: 1` con el mismo `document_id` |
+| 20 | `az webapp log tail …` | Stream de logs en vivo | No se confirmó (probable corte del streaming por el proxy o falta de tráfico) |
+| 21 | `az webapp log download … --log-file logs.zip` | Descarga el paquete de logs | Contiene `*_default_docker.log` con las líneas de gunicorn y de la app; confirma que el logging está activo |
+| 22 | `echo "Kudu URL: https://$APP_NAME.scm.azurewebsites.net"` | Imprime la URL del sitio de gestión | Kudu = SCM = Advanced Tools; login con Entra ID (plano de gestión, no el `AcrPull`) |
+| 23 | `az webapp config appsettings list … -o table` | Lista los app settings con sus valores | `set` oculta los valores en su respuesta (`value: null`); `list` muestra los reales |
+| 24 | `az appservice plan list -g $RESOURCE_GROUP -o table` | Estado real del plan | `plan show` devuelve `provisioningState` nulo; el listado muestra `Succeeded`/`Ready` |
+| 25 | `az group delete --name rg-ai200-appsvc --no-wait --yes` y `az group exists …` | Cleanup | La plataforma también desprovisiona al finalizar el lab |
+
 ## Resultados
 | Comprobación | Resultado |
 |---|---|

@@ -46,6 +46,26 @@ az acr repository show --name $ACR_NAME --image inference-api:v1.0.0
 az group delete --name rg-ai200-acr --no-wait --yes
 ```
 
+## Comandos explicados
+
+| # | Comando | Qué hace | Por qué / concepto |
+|---|---|---|---|
+| 1 | `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` | Hace que `az` use el almacén de certificados del sistema | Solo si un proxy corporativo re-firma TLS; `az` trae su propio bundle de Python y no confía en esa CA |
+| 2 | `az provider register --namespace Microsoft.ContainerRegistry` | Activa el proveedor de recursos de ACR en la suscripción | Una suscripción no puede crear recursos de un servicio hasta registrar su proveedor (aquí ya estaba `Registered`) |
+| 3 | `python3 azdeploy.py` | Crea el resource group y un ACR Basic; escribe `.env` | Envuelve `az group create` y `az acr create --sku Basic`. El nombre del ACR sale de un hash del ID de usuario |
+| 4 | `source .env` | Carga `RESOURCE_GROUP`, `ACR_NAME`, `LOCATION` en la sesión | Hay que repetirlo en cada terminal nueva |
+| 5 | `az acr build --registry $ACR_NAME --image inference-api:v1.0.0 ./api` | Sube `./api`, construye la imagen en un agente de ACR Tasks y la sube al registry | Sin Docker local; build en entorno controlado. Genera una run (`ca1`) |
+| 6 | `az acr repository list --name $ACR_NAME -o table` | Lista los repositorios | Muestra `inference-api` |
+| 7 | `az acr repository show-tags --name $ACR_NAME --repository inference-api -o table` | Lista los tags del repositorio | El tag es una referencia mutable |
+| 8 | `az acr manifest list-metadata --registry $ACR_NAME --name inference-api -o table` | Muestra digest, arquitectura, tamaño y fechas de cada manifest | El digest `sha256:…` identifica el contenido y es inmutable; coincide con el del push |
+| 9 | `az acr run --registry $ACR_NAME --cmd "<imagen> python -c 'from app import app'" /dev/null` | Arranca un contenedor de la imagen en un agente de Tasks y ejecuta el comando | Prueba que la app importa sin desplegarla. `/dev/null` = contexto de origen vacío. Run `ca2` |
+| 10 | `az acr build … --image inference-api:v1.1.0 ./api` | Segunda versión del mismo código | Digest distinto aunque el código no cambie (builds no reproducibles); solo se ahorra tiempo de push por las capas compartidas. Run `ca3` |
+| 11 | `az acr task list-runs --registry $ACR_NAME -o table` | Historial de runs | Tipo manual, estado y duración de `ca1`, `ca2`, `ca3` |
+| 12 | `az acr repository update --name $ACR_NAME --image inference-api:v1.0.0 --write-enabled false` | Bloquea la escritura del tag | Impide sobrescribirlo; no impide borrarlo (`deleteEnabled` sigue `true`) |
+| 13 | `az acr repository show --name $ACR_NAME --image inference-api:v1.0.0` | Muestra los atributos del tag | Comprobar `writeEnabled: false` |
+| 14 | `az group delete --name rg-ai200-acr --no-wait --yes` | Borra el resource group y todo lo que contiene | `--no-wait` lo deja en segundo plano |
+| 15 | `az group exists --name rg-ai200-acr` | Comprueba si existe | `false` cuando el borrado terminó |
+
 ## Resultados
 
 | Run | Comando | Resultado | Duración |
