@@ -12,7 +12,10 @@ Repo de documentación y labs del curso AI-200 (Microsoft). El usuario es SysOps
 Índice en `docs/00-plan/labs-oficiales.md` (fuente: https://microsoftlearning.github.io/mslearn-azure-ai/). Al ayudar con un lab, abrir la guía oficial correspondiente con WebFetch para seguir los mismos pasos que el alumno.
 
 ## Registro de sesiones
-Cada sesión de clase/trabajo se guarda en `sesiones/AAAA-MM-DD-<tema>.md` (decisiones, qué se hizo, dudas, pendientes). Al final de cada sesión: crear/actualizar el fichero, commit y push. Sin datos personales de terceros ni credenciales (repo público).
+Cada sesión de clase/trabajo se guarda en `sesiones/AAAA-MM-DD-<tema>.md` (decisiones, qué se hizo, dudas, pendientes). Al final de cada sesión: crear/actualizar el fichero y abrir la PR del día. Sin datos personales de terceros ni credenciales (repo público).
 
 ## Labs: dos vías
 Los labs son un SaaS con credenciales temporales; si el alumno se atasca se puede guiar en la plataforma o reproducir el lab en local (ver `.claude/agents/oscar.md`).
+
+## Flujo de PRs
+Una rama y una PR por día de curso (`dia-NN-AAAA-MM-DD` → `main`), con la plantilla de `.github/`. Nunca hacer push directo a `main` desde el día 2. El merge lo hace el usuario. Skill: `/aprender`.
