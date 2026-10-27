@@ -107,3 +107,25 @@ az group delete --name rg-ai200-appsvc --no-wait --yes
 - Paso 14 (Kudu): URL generada; el alumno no llegó a informar de lo que vio en Environment, la consola ni `/home/LogFiles/`.
 - Experimento opcional (reiniciar la app y comprobar que `/documents` conserva el documento): no realizado.
 - Cleanup: la plataforma de labs desprovisiona los recursos al finalizar el laboratorio (según el docente); además se puede borrar a mano con el comando del paso 16. Pendiente de ejecutar por el alumno.
+
+## Cleanup y troubleshooting (de la guía de la plataforma)
+
+**Cleanup.** Borra el resource group y todo lo que contiene (ACR, plan, web app, asignación de rol). Se ejecuta en segundo plano:
+
+```bash
+az group delete --name rg-ai200-appsvc --no-wait --yes
+az group exists --name rg-ai200-appsvc     # false cuando termina
+```
+
+Aviso de la guía: si se hubiera usado un resource group preexistente, también se borrarían sus recursos ajenos al lab. Al finalizar el laboratorio en la plataforma, ésta desprovisiona los recursos igualmente.
+
+**Troubleshooting**
+| Síntoma | Qué comprobar |
+|---|---|
+| Variables vacías o sesión equivocada | `az account show`; recargar `source .env` (bash) o `. .\.env.ps1` (PowerShell) |
+| El ACR no responde | `az acr list -o table`; en el portal, *Provisioning State* = `Succeeded` |
+| Falla el build (el script oculta la salida de `az acr build`) | `az acr task list-runs --registry $ACR_NAME -o table` y `az acr task logs --registry $ACR_NAME --run-id <id>`; ejecutar el script desde la raíz del proyecto (donde está `api/`) |
+| `ImagePullBackOff` / `unauthorized` / `403` | `az webapp identity show` (identidad system-assigned activa); asignación `AcrPull` sobre el ACR (puede tardar 1-2 min en propagarse); repetir `az webapp config container set` por si la imagen o la URL del registry son incorrectas |
+| 502/503 poco después de desplegar | Esperar un minuto: el primer arranque descarga la imagen. Activar el logging de contenedor y `az webapp log tail` |
+| La persistencia no funciona | `WEBSITES_ENABLE_APP_SERVICE_STORAGE=true` en los app settings; llamar a `/documents` tras enviar un documento |
+
