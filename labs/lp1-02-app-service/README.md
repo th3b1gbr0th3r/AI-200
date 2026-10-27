@@ -100,35 +100,146 @@ az webapp config appsettings list -g $RESOURCE_GROUP -n $APP_NAME -o table
 az group delete --name rg-ai200-appsvc --no-wait --yes
 ```
 
-## Comandos explicados
+## Comandos al detalle
 
-| # | Comando | Qué hace | Por qué / concepto |
+Convenciones: `$VAR` = variable cargada con `source .env`; `\` = continuación de línea en bash; `-o tsv` = valor plano sin comillas; `-g` = `--resource-group`, `-n` = `--name`. Los comandos de los pasos 1-3 (proxy, proveedores, login) son los del lab 1; aquí se detallan los nuevos.
+
+### 1. Edición de `azdeploy.py` (antes de ejecutarlo)
+| Línea | Antes | Después | Por qué |
 |---|---|---|---|
-| 1 | Edición de `azdeploy.py` (`rg`, `location`, línea 224 `--sku`) | Fija grupo y región (`canadacentral`) y cambia el SKU del plan de `P0v3` a `B1` | El lab restringe regiones y SKUs. El script imprime `P0v3` aunque el plan real sea `B1` (texto fijo) |
-| 2 | `az provider register --namespace Microsoft.ContainerRegistry` y `Microsoft.Web` | Activa los proveedores de ACR y App Service | Requisito previo de la suscripción |
-| 3 | `python3 azdeploy.py` → opción 1 | Crea el resource group, el ACR (`--admin-enabled false`) y construye `docprocessor:v1` | Es `az group create` + `az acr create` + `az acr build` (como el lab 1) |
-| 4 | `python3 azdeploy.py` → opción 2 | Crea el App Service plan Linux `B1` y escribe `.env` | El plan es la capacidad (node pool); `--is-linux` es obligatorio para contenedores Linux |
-| 5 | `source .env` | Carga `RESOURCE_GROUP`, `ACR_NAME`, `APP_PLAN`, `APP_NAME`, `LOCATION` | Necesario para los comandos siguientes |
-| 6 | `az webapp create --resource-group $RESOURCE_GROUP --plan $APP_PLAN --name $APP_NAME --container-image-name $ACR_NAME.azurecr.io/docprocessor:v1` | Crea la web app en el plan, apuntando a la imagen | La app queda `Running` pero **no puede hacer pull**: sin identidad (`identity: null`) ni configuración de contenedor |
-| 7 | `az webapp identity assign …` | Crea la identidad system-assigned de la app | "Quién soy": un service principal en Entra ligado al ciclo de vida de la app |
-| 8 | `PRINCIPAL_ID=$(az webapp identity show … --query principalId -o tsv)` | Guarda el ID de esa identidad en una variable | `-o tsv` devuelve el valor sin comillas ni JSON |
-| 9 | `ACR_ID=$(az acr show … --query id -o tsv)` | Guarda el ID completo del ACR | Se usará como `--scope` |
-| 10 | `az role assignment create --assignee $PRINCIPAL_ID --scope $ACR_ID --role AcrPull` | Concede a la identidad permiso de solo descarga sobre ese ACR | "Qué puedo hacer": mínimo privilegio. Puede tardar 1-2 min en propagarse |
-| 11 | `az webapp config set … --acr-use-identity true --acr-identity '[system]'` | La app usa su identidad system-assigned para el pull | Pone `acrUseManagedIdentityCreds=true`; sin usuario ni contraseña de ACR |
-| 12 | `az webapp config container set … --container-image-name … --container-registry-url https://$ACR_NAME.azurecr.io` | Guarda imagen y registry en la configuración | Rellena `linuxFxVersion=DOCKER\|<imagen>`. El aviso "Retrieving credentials failed" es esperable: no hay admin |
-| 13 | `az webapp config appsettings set … --settings WEBSITES_PORT=80` | Indica el puerto del contenedor | Imprescindible si no escucha en 80/8080; aquí ya es 80 |
-| 14 | `az webapp config appsettings set … --settings WEBSITES_ENABLE_APP_SERVICE_STORAGE=true` | Monta `/home` como almacenamiento persistente | Ruta fija; sin esto los JSON de `/home/processed` se pierden al reiniciar |
-| 15 | `az webapp config set … --always-on true` | Evita la descarga por inactividad (~20 min) | Requiere Basic o superior |
-| 16 | `az webapp log config … --docker-container-logging filesystem` | Activa los logs de stdout/stderr del contenedor | Hay que activarlo explícitamente; `log show` no lo refleja bien |
-| 17 | `APP_URL=$(az webapp show … --query defaultHostName -o tsv)` | Obtiene el hostname público | `https://$APP_URL` |
-| 18 | `curl -X POST "https://$APP_URL/process" -H "Content-Type: text/plain" --data-binary @document.txt` | Envía el documento | Devuelve estadísticas reales y análisis simulado; `"saved": true` confirma la escritura en `/home/processed` |
-| 19 | `curl https://$APP_URL/documents` | Lista los documentos guardados | `count: 1` con el mismo `document_id` |
-| 20 | `az webapp log tail …` | Stream de logs en vivo | No se confirmó (probable corte del streaming por el proxy o falta de tráfico) |
-| 21 | `az webapp log download … --log-file logs.zip` | Descarga el paquete de logs | Contiene `*_default_docker.log` con las líneas de gunicorn y de la app; confirma que el logging está activo |
-| 22 | `echo "Kudu URL: https://$APP_NAME.scm.azurewebsites.net"` | Imprime la URL del sitio de gestión | Kudu = SCM = Advanced Tools; login con Entra ID (plano de gestión, no el `AcrPull`) |
-| 23 | `az webapp config appsettings list … -o table` | Lista los app settings con sus valores | `set` oculta los valores en su respuesta (`value: null`); `list` muestra los reales |
-| 24 | `az appservice plan list -g $RESOURCE_GROUP -o table` | Estado real del plan | `plan show` devuelve `provisioningState` nulo; el listado muestra `Succeeded`/`Ready` |
-| 25 | `az group delete --name rg-ai200-appsvc --no-wait --yes` y `az group exists …` | Cleanup | La plataforma también desprovisiona al finalizar el lab |
+| 5 | `rg = "<your-resource-group-name>"` | `rg = "rg-ai200-appsvc"` | Nombre libre; el script crea el grupo si no existe |
+| 6 | `location = "<your-azure-region>"` | `location = "canadacentral"` | Región indicada por la guía de la plataforma; escrita en minúsculas y sin espacios |
+| 224 | `"--sku", "P0v3",` | `"--sku", "B1",` | La suscripción del lab no permite Premium; **se cambia el valor, no la clave `--sku`** |
+- **Trampa:** la línea 230 sigue imprimiendo `SKU: P0v3 (Premium v3 tier)`; es texto fijo. El plan real es `B1`.
+- **Error típico:** si se borra por error la clave `--sku`, la opción 2 del menú falla con un error de argumento no reconocido.
+
+### 2. `az provider register --namespace Microsoft.ContainerRegistry` y `--namespace Microsoft.Web`
+- Igual que en el lab 1 (ver allí el desglose). `Microsoft.Web` es el proveedor de App Service. Ambos ya estaban `Registered` en el lab.
+
+### 3. `python3 azdeploy.py` (menú)
+```
+Opción 1  →  az group create  +  az acr create --sku Basic --admin-enabled false  +  az acr build --image docprocessor:v1 --file api/Dockerfile api/
+Opción 2  →  az group create (ya existe: lo salta)  +  az appservice plan create --sku B1 --is-linux   y escribe .env
+Opción 3  →  solo lectura: estado de ACR, imagen, plan y web app
+Opción 4  →  salir
+```
+- **`--admin-enabled false`:** el registry no tiene usuario/contraseña de administrador. Obliga a usar identidad gestionada para el `pull`.
+- **`az appservice plan create … --is-linux`:** el plan es la capacidad (node pool); `--is-linux` es obligatorio para contenedores Linux y no se puede mezclar con Windows en el mismo plan.
+- **Nombres derivados** de un hash del usuario: `acr<hash>`, `plan-docprocessor-<hash>`, `app-docprocessor-<hash>`. El `.env` solo lo escribe la opción 2.
+- **La opción 3 da un falso negativo** para el plan ("Not created"): `az appservice plan show --query provisioningState` devuelve `null`. Se comprueba con `az appservice plan list -g $RESOURCE_GROUP -o table` (`Succeeded` / `Ready`).
+- **Error típico:** la pantalla se limpia al volver al menú y se pierde el resultado; se comprueba con las lecturas de la sección 18.
+
+### 4. `source .env`
+- Carga `RESOURCE_GROUP`, `ACR_NAME`, `APP_PLAN`, `APP_NAME`, `LOCATION`. Se repite en cada terminal nueva. Errata típica: `echo $APP_NAM` devuelve vacío sin error.
+
+### 5. `az webapp create`
+```
+az webapp create  --resource-group $RESOURCE_GROUP  --plan $APP_PLAN  --name $APP_NAME  --container-image-name $ACR_NAME.azurecr.io/docprocessor:v1
+                          │                            │                  │                          └ imagen con formato registry/repositorio:tag
+                          │                            │                  └ nombre global → <name>.azurewebsites.net
+                          │                            └ plan donde se coloca (B1)
+                          └ grupo
+```
+- **Qué hace:** crea la web app en el plan. Equivale a crear el Deployment sobre un node pool.
+- **Qué esperar:** un JSON largo. Los campos que importan: `state: Running`, `kind: app,linux,container`, `defaultHostName`, `enabledHostNames` (la app y el sitio `.scm.`), `identity: null`, `acrUseManagedIdentityCreds: false`, `linuxFxVersion: ""`.
+- **Trampa:** `Running` es el estado del recurso, no de tu contenedor. La app **todavía no puede hacer pull** (sin identidad ni configuración).
+- **Seguridad:** el JSON incluye el ID de suscripción y un `customDomainVerificationId`; no se copia al repo.
+
+### 6. `az webapp identity assign --resource-group $RESOURCE_GROUP --name $APP_NAME`
+- **Qué hace:** crea una identidad **system-assigned**: un service principal en Entra ID ligado al ciclo de vida de la app (nace y muere con ella).
+- **Qué esperar:** `{"principalId": "…", "tenantId": "…", "type": "SystemAssigned", "userAssignedIdentities": null}`. El `principalId` es el "quién soy".
+- **Por qué:** es el equivalente a dar a un pod un ServiceAccount con workload identity. La identidad sola no puede hacer nada: falta el rol.
+- **Alternativa:** *user-assigned*, un recurso independiente reutilizable por varios recursos (habitual en AKS).
+
+### 7. Variables con `$(…)` y `az role assignment create`
+```bash
+PRINCIPAL_ID=$(az webapp identity show --resource-group $RESOURCE_GROUP --name $APP_NAME --query principalId --output tsv)
+ACR_ID=$(az acr show --resource-group $RESOURCE_GROUP --name $ACR_NAME --query id --output tsv)
+az role assignment create --assignee $PRINCIPAL_ID --scope $ACR_ID --role AcrPull
+```
+```
+$( … )                   sustitución de comandos: ejecuta lo de dentro y pone su salida en la variable
+--query principalId      consulta JMESPath: extrae solo ese campo del JSON
+--output tsv             valor plano, sin comillas ni JSON
+--assignee               quién recibe el permiso (la identidad de la web app)
+--scope                  dónde vale: el ID completo del ACR, no el grupo ni la suscripción
+--role AcrPull           qué puede hacer: solo descargar imágenes (mínimo privilegio)
+```
+- **Qué esperar:** JSON con `principalType: ServicePrincipal`, `roleDefinitionId` terminado en `7f951dda-…` (el ID fijo de `AcrPull`) y `scope` terminado en `/registries/<acr>`.
+- **Por qué:** sin este rol, el pull falla (`ImagePullBackOff` / `unauthorized` / 403). Puede tardar 1-2 minutos en propagarse.
+- **Idea clave:** identidad (quién soy) y rol (qué puedo hacer) son dos pasos separados. ServiceAccount + RoleBinding en K8s.
+
+### 8. `az webapp config set … --acr-use-identity true --acr-identity '[system]'`
+- **Qué hace:** le dice a App Service que use la identidad system-assigned para autenticarse en el registry. Pone `acrUseManagedIdentityCreds: true`.
+- **Trampa:** las comillas simples en `'[system]'` evitan que bash interprete los corchetes.
+- **Qué esperar:** el JSON de configuración del sitio; `linuxFxVersion` sigue vacío hasta el siguiente comando.
+
+### 9. `az webapp config container set … --container-image-name … --container-registry-url https://$ACR_NAME.azurecr.io`
+- **Qué hace:** guarda la imagen y la URL del registry en la configuración; `linuxFxVersion` pasa a `DOCKER|<acr>.azurecr.io/docprocessor:v1`.
+- **Qué esperar:** el aviso `Retrieving credentials failed … run 'az acr update --admin-enabled true'`. **Es esperable y no se arregla habilitando el admin**: el CLI intenta primero buscar usuario/contraseña, no los encuentra y sigue con la identidad. Después imprime los app settings: `DOCKER_REGISTRY_SERVER_URL`, `DOCKER_CUSTOM_IMAGE_NAME` y `WEBSITES_ENABLE_APP_SERVICE_STORAGE=false`.
+- **Detalle:** no aparece ningún `DOCKER_REGISTRY_SERVER_USERNAME/PASSWORD`; confirma que no hay credenciales guardadas.
+
+### 10. `az webapp config appsettings set … --settings WEBSITES_PORT=80`
+```
+--settings  WEBSITES_PORT=80
+                │            └ valor
+                └ app setting: se inyecta como variable de entorno al arrancar el contenedor
+```
+- **Por qué:** App Service solo asume 80 u 8080; si el contenedor escucha en otro puerto, hay errores de conexión (knowledge check 2.1). Aquí gunicorn ya escucha en 80, así que es declarativo.
+- **Trampa:** la respuesta muestra `"value": null` en todos los settings: **la CLI oculta los valores**. Se comprueba con `appsettings list`.
+
+### 11. `… --settings WEBSITES_ENABLE_APP_SERVICE_STORAGE=true`
+- **Qué hace:** monta `/home` como almacenamiento persistente compartido entre instancias.
+- **Por qué:** sin él, `/home/processed` es efímero y los JSON se pierden al reiniciar.
+- **Detalle:** la ruta es fija (`/home`); para elegirla existe el montaje de Azure Storage propio (`az webapp config storage-account add --mount-path …`, no se puede usar `/` ni `/home`, Blob es solo lectura). El montaje oculta lo que la imagen tuviera en `/home`: por eso `main.py` recrea la carpeta al arrancar.
+
+### 12. `az webapp config set … --always-on true`
+- **Qué hace:** evita que la app se descargue tras ~20 minutos de inactividad.
+- **Requisito:** plan Basic o superior (`B1` vale). En el log aparece como peticiones `GET /` con user-agent `AlwaysOn`.
+
+### 13. `az webapp log config … --docker-container-logging filesystem`
+- **Qué hace:** activa la captura de stdout/stderr del contenedor en el sistema de ficheros (retención de 3 días, 100 MB).
+- **Por qué:** el logging de contenedor hay que activarlo explícitamente.
+- **Trampa:** la salida muestra `applicationLogs.fileSystem.level: Off` y `az webapp log show` devuelve `dockerContainerLogging: null`; no refleja el ajuste, pero los logs existen (se comprueba con `log download`).
+
+### 14. `APP_URL=$(az webapp show … --query defaultHostName --output tsv)` y `echo "Application URL: https://$APP_URL"`
+- Guarda el hostname público (`app-…azurewebsites.net`). La plataforma termina TLS: se accede por HTTPS y el contenedor recibe HTTP. Faltar el `echo` de la segunda línea es un fallo habitual: la variable queda guardada pero no se ve.
+
+### 15. `curl -X POST "https://$APP_URL/process" -H "Content-Type: text/plain" --data-binary @document.txt`
+```
+-X POST                       método
+-H "Content-Type: text/plain" cabecera: el cuerpo es texto
+--data-binary @document.txt   cuerpo = contenido exacto del fichero (-d podría alterar saltos de línea)
+```
+- **Qué esperar:** JSON con `statistics` **reales** (166 caracteres, 22 palabras), `analysis` **simulado** (siempre las mismas entidades) y `"storage": {"saved": true, "path": "/home/processed/<uuid>.json"}`.
+- **PowerShell:** `Invoke-RestMethod -Method Post -Uri … -ContentType "text/plain" -Body $body`.
+
+### 16. `curl https://$APP_URL/documents`
+- **Qué hace:** lista los JSON guardados. `count: 1` con el mismo `document_id`; `size_bytes: 1003` es el tamaño del fichero (resultado completo con `indent=2`), no el del texto.
+- **Qué prueba:** que `/home/processed` es escribible y legible. Para probar la **persistencia** hay que reiniciar la app (`az webapp restart`) y repetir este `GET` (experimento no realizado).
+
+### 17. `az webapp log tail …` y `az webapp log download … --log-file logs.zip`
+- `log tail`: stream en vivo; solo muestra líneas **nuevas** mientras está abierto. En este entorno no se confirmó (probable corte por el proxy, o falta de tráfico durante el `tail`). Se prueba con dos terminales: `tail` en una y `curl` en otra. Salir con Ctrl+C.
+- `log download`: zip con `LogFiles/*_default_docker.log`, que contiene el arranque de gunicorn (`Listening at: http://0.0.0.0:80`, dos workers), las líneas `main - INFO` de la app (`Document processing request received`, `Result saved to …`) y el access log (`"POST /process" 200`). La IP `169.254.130.1` es la del front-end interno de App Service, no la del cliente. Los `HealthCheck/1.0` y `AlwaysOn` son tráfico de la plataforma.
+
+### 18. Lecturas para comprobar el estado
+```bash
+az appservice plan list -g $RESOURCE_GROUP -o table                                 # ProvisioningState/Status reales
+az webapp config appsettings list -g $RESOURCE_GROUP -n $APP_NAME -o table          # valores reales (set los oculta)
+az webapp show -g $RESOURCE_GROUP -n $APP_NAME --query '{state:state,alwaysOn:siteConfig.alwaysOn}'
+az acr task list-runs --registry $ACR_NAME -o table                                 # run cx1: build de docprocessor:v1
+```
+- **Idea clave:** `set` no confirma el valor y `plan show` devuelve `provisioningState: null`; contrastar siempre con `list` / `show` antes de dar algo por hecho.
+- **Detalle:** el prefijo de las runs depende de la región del registry (`ca` en East US, `cx` en Canada Central).
+
+### 19. Kudu: `echo "Kudu URL: https://$APP_NAME.scm.azurewebsites.net"`
+- **Qué es:** cada web app tiene dos hostnames: `<app>.azurewebsites.net` (la aplicación) y `<app>.scm.azurewebsites.net` (sitio de gestión). SCM = Source Control Manager; Kudu = el motor; el portal lo llama *Advanced Tools*.
+- **Qué se mira:** *Environment* (variables de entorno: `WEBSITES_PORT`, `WEBSITES_ENABLE_APP_SERVICE_STORAGE`), *SSH → Kudu* (consola; `ls /home/processed`) y *File Manager* (`/home/LogFiles/`).
+- **Seguridad:** lo protege Entra ID. Entras con tu usuario (plano de gestión); el rol `AcrPull` es de la identidad de la app (carga de trabajo): no son lo mismo.
+- **Analogía K8s:** `kubectl exec` + `logs` + `describe` en el navegador. En esta sesión no se llegó a confirmar lo visto en Kudu.
+
+### 20. `az group delete --name rg-ai200-appsvc --no-wait --yes` y `az group exists --name rg-ai200-appsvc`
+- Mismo desglose que en el lab 1. Borra ACR, plan, web app y la asignación de rol. Lo ejecuta el alumno. La plataforma de labs también desprovisiona los recursos al finalizar el laboratorio, y la sesión de `az` caduca con la instancia (`AADSTS130507`).
 
 ## Resultados
 | Comprobación | Resultado |

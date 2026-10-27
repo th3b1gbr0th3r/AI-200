@@ -20,10 +20,22 @@ Objetivo: que cada día quede **al menos un aprendizaje** escrito con palabras d
    - **Repaso:** una pregunta tipo test (4 opciones, la D nunca correcta es opcional; solo si es útil).
    ```
 4. **Actualizar la sesión** `sesiones/AAAA-MM-DD-<tema>.md` (crearla si no existe): qué se hizo, decisiones, estado, pendientes. Enlaza el aprendizaje.
-5. **Comprobar seguridad** antes de subir: sin credenciales, IDs de suscripción/tenant, endpoints con claves, datos personales de terceros ni material con copyright. El repo es público.
-6. **Commit y push** con el patrón del repo (token en cabecera temporal, nunca en `.git/config`).
-7. Si el aprendizaje es una preferencia o acuerdo de trabajo, guárdalo también en la memoria.
+5. **Documentar los labs del día** en `labs/lpN-NN-*/README.md` (ver "Estándar de documentación de comandos"): objetivo, diagrama de qué se construye, fases, comandos al detalle, resultados e incidencias. Las notas de clase van a `docs/modulos/NN-*.md`.
+6. **Comprobar seguridad** antes de subir: sin credenciales, IDs de suscripción/tenant, endpoints con claves, datos personales de terceros (nombres de docente y compañeros) ni material con copyright. El repo es público. Una transcripción de clase se usa para extraer contenido, nunca se publica.
+7. **Commit y push** con el patrón del repo (token en cabecera temporal, nunca en `.git/config`).
+8. Si el aprendizaje es una preferencia o acuerdo de trabajo, guárdalo también en la memoria.
+
+## Estándar de documentación de comandos
+Pedido por el usuario el 27/10/2026: no basta una tabla de una línea por comando. Cada comando documentado lleva, en este orden:
+1. **El comando completo** y, debajo, un **desglose por piezas** en bloque de código con flechas (`az` → grupo → acción → cada flag/variable → qué significa su valor). Para variables de entorno: `export`, nombre y valor por separado.
+2. **Qué hace**: efecto real, incluyendo lo que ocurre por debajo (comandos `az` que envuelve un script, llamadas asíncronas, agentes efímeros…).
+3. **Por qué hace falta**: el problema que resuelve (p. ej. proxy que re-firma TLS, proveedor sin registrar, identidad sin rol).
+4. **Qué esperar**: salida típica y cómo leerla (campos que importan, ruido que se ignora).
+5. **Detalles / trampas**: flags con significado distinto entre comandos parecidos, diferencias entre `show` y `list`, valores que la CLI oculta, errores típicos con síntoma → causa → arreglo.
+6. **Analogía con Kubernetes** cuando ayude, y la relación con el examen.
+Los comandos que crean o borran recursos los ejecuta el alumno; en la documentación se marcan igual, pero la ejecución es suya.
 
 ## Reglas
-- Un aprendizaje bien hecho vale más que cinco apuntes sueltos.
+- Un aprendizaje bien hecho vale más que cinco apuntes sueltos (si el alumno elige varios, una sola entrada con uno principal y los demás como apoyo).
 - Respuestas en español, sin relleno.
+- Los labs se guardan con el mismo formato cada día; el curso completo (martes y jueves) vive en el repo.
