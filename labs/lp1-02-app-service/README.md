@@ -5,6 +5,43 @@ Material de partida: `app-svc-container-python.zip` (https://github.com/Microsof
 
 Ejecutado en Linux (bash). La plataforma del curso da los mismos pasos en PowerShell. Diferencias de la guía de la plataforma respecto a la oficial: región `canadacentral` y SKU del plan `B1` (línea 224 de `azdeploy.py`, el script trae `P0v3`).
 
+## Objetivo
+Desplegar una imagen **Linux** guardada en ACR en **Azure App Service**, autenticándose contra el registry **sin credenciales** (identidad gestionada + rol `AcrPull`), configurar su comportamiento en ejecución (puerto, almacenamiento persistente, Always On) y observarla con logs y la consola Kudu.
+
+Al terminar debes ser capaz de explicar: la diferencia entre App Service plan y web app, cómo obtiene la app permiso para hacer `pull`, para qué sirven `WEBSITES_PORT` y `WEBSITES_ENABLE_APP_SERVICE_STORAGE`, y dónde se miran los logs y la configuración.
+
+## Qué se construye
+```
+                    ┌──────────────── resource group rg-ai200-appsvc (canadacentral) ───────────────┐
+ usuario (HTTPS) ──►│  App Service plan  plan-docprocessor-<hash>   (B1, Linux)                      │
+   TLS lo termina   │   └ Web app  app-docprocessor-<hash>                                           │
+   la plataforma    │        ├ identidad system-assigned ──(rol AcrPull)──┐                          │
+                    │        ├ contenedor gunicorn :80  (WEBSITES_PORT=80)│ pull                      │
+                    │        └ /home/processed  (persistente)             ▼                          │
+                    │  ACR  acr<hash>  (Basic, admin deshabilitado)  docprocessor:v1                  │
+                    └────────────────────────────────────────────────────────────────────────────────┘
+   Diagnóstico: log de contenedor (stdout/stderr)  ·  Kudu / SCM  <app>.scm.azurewebsites.net
+```
+- El **plan** es la capacidad (equivale a un node pool); la **web app** es lo que se coloca en él.
+- La app (`api/main.py`) simula el procesado de documentos: `POST /process` guarda un JSON en `/home/processed` y `GET /documents` lo lista.
+
+## Fases del lab
+| Fase | Qué haces | Qué demuestra |
+|---|---|---|
+| 1. Despliegue base | `azdeploy.py` opciones 1 y 2: ACR + imagen y plan B1 | La infraestructura de soporte; la web app no la crea el script |
+| 2. Web app | `az webapp create` | Existe y está `Running`, pero **no puede hacer pull** (`identity: null`) |
+| 3. Identidad | `az webapp identity assign` | "Quién soy": service principal ligado a la app |
+| 4. Permiso | `az role assignment create … AcrPull` | "Qué puedo hacer": solo descargar, solo de ese ACR |
+| 5. Pull con identidad | `config set --acr-use-identity` + `config container set` | Sin usuario/contraseña de ACR (el aviso de credenciales es esperable) |
+| 6. Runtime | `WEBSITES_PORT`, `WEBSITES_ENABLE_APP_SERVICE_STORAGE`, `--always-on`, `log config` | Puerto, persistencia en `/home`, no dormirse y logs de contenedor |
+| 7. Verificación | `curl /`, `POST /process`, `GET /documents` | La app responde y escribe en almacenamiento persistente |
+| 8. Observabilidad | logs, Kudu, `appsettings list` | Dónde mirar cuando algo falla |
+| 9. Cleanup | `az group delete` | Se borra todo de una vez |
+
+## Cómo se relaciona con lo que ya sabes (K8s) y con el examen
+- Identidad + rol = ServiceAccount + RoleBinding (workload identity). Plan = node pool; web app = Deployment; Kudu = `kubectl exec` + `logs` + `describe` en el navegador.
+- Examen (contenedores 20-25 %; seguridad/monitorización 20-25 %): managed identity + `AcrPull`, `WEBSITES_PORT` (fallo de despliegue más común), startup command que sustituye al `CMD`, slot settings que no viajan en el swap (con B1 no hay slots: es teoría), Key Vault references, log stream y Kudu.
+
 ## Qué hay en el material de partida
 - `api/Dockerfile`: `python:3.11-slim`, instala `requirements.txt` (flask 3.0.0, gunicorn 22.0.0), `mkdir -p /home/processed`, `EXPOSE 80`, `CMD gunicorn --bind 0.0.0.0:80 --workers 2 --access-logfile - main:app`.
 - `api/main.py`: API Flask de procesado de documentos simulado. Configuración por variables de entorno (`ENVIRONMENT`, `LOG_LEVEL`, `MAX_DOCUMENT_SIZE_MB`, `PROCESSING_TIMEOUT_SECONDS`, `STORAGE_PATH`). Rutas: `GET /`, `GET /health`, `POST /process` (guarda el resultado en `/home/processed/<id>.json`), `GET /documents`, `GET /documents/<id>`. El análisis (entidades, sentimiento) es fijo; las estadísticas son reales.
