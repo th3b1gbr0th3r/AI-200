@@ -48,3 +48,31 @@ Variables que carga `.env`: `RESOURCE_GROUP`, `ACR_NAME`, `ACR_SERVER`, `ACA_ENV
 az group delete --name rg-ai200-aca --no-wait --yes
 ```
 Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-container-apps/01-aca-deploy-containers.html · Comandos al detalle: [`labs/lp2-01-aca-deploy/README.md`](../../labs/lp2-01-aca-deploy/README.md)
+
+## Qué hace el script, comando a comando
+Funciones comunes explicadas en [`../README.md`](../README.md#funciones-comunes-de-todos-los-scripts-qué-hacen-y-por-qué).
+
+### Opción 1 · `create_acr_and_build_image()`
+1. `az group exists` / `az group create --name rg-ai200-aca --location eastus` → el resource group.
+2. `az acr show … --query name -o tsv` → ¿existe el ACR?
+3. Si no: `az acr create --resource-group … --name acr<hash> --sku Basic --admin-enabled false`.
+4. `az acr build --resource-group … --registry acr<hash> --image ai-api:v1 --file api/Dockerfile --no-logs api/` → construye en la nube la API (Flask + gunicorn, puerto 8000) y la publica como `ai-api:v1`.
+
+### Opción 2 · `create_containerapps_environment()`
+1. `create_resource_group()` (idempotente).
+2. `az containerapp env show --name aca-env-<hash> --resource-group … --query name -o tsv` → ¿existe?
+3. Si no: **`az containerapp env create --name aca-env-<hash> --resource-group … --location eastus`**
+   ```
+   az containerapp env create → crea el Container Apps environment: el límite compartido de red, DNS interno y logs
+   --name / --resource-group / --location → nombre derivado, grupo y región
+   (sin --logs-workspace-id)  → la CLI crea además un Log Analytics workspace y lo enlaza para los logs
+   ```
+   Es la parte lenta (varios minutos). Puede devolver un error de conexión aunque el environment siga creándose: comprobar con `az containerapp env show … --query properties.provisioningState -o tsv` hasta `Succeeded`.
+4. `write_env_files()` con `RESOURCE_GROUP`, `ACR_NAME`, `ACR_SERVER`, `ACA_ENVIRONMENT`, `CONTAINER_APP_NAME`, `CONTAINER_IMAGE`, `TARGET_PORT`, `MODEL_NAME`, `TPM_LIMIT`, `EMBEDDINGS_API_KEY` y `LOCATION`.
+
+### Opción 3 · `check_deployment_status()` (solo lectura)
+`az containerapp env show … --query properties.provisioningState`, `az acr show … --query provisioningState` y, si el ACR está listo, `az acr repository show … --image ai-api:v1`. Resultado típico: `Succeeded` en ambos y `Container image: ai-api:v1`.
+
+### Opción 4 · salir
+
+La **container app**, el secreto y la revisión **no** los crea el script: son los comandos manuales de la Task 2 (`az containerapp create … --registry-identity system`, `secret set`, `update --set-env-vars … secretref:`), desglosados en [`labs/lp2-01-aca-deploy/README.md`](../../labs/lp2-01-aca-deploy/README.md).
