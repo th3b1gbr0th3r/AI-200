@@ -15,4 +15,4 @@ Entrada en `docs/aprendizajes.md`.
 - [ ] Sin credenciales, claves ni tokens
 - [ ] Sin IDs de suscripción/tenant ni endpoints con secretos
 - [ ] Sin datos personales de terceros
-- [ ] Sin material con copyright (PDF/slides del instructor)
+- [ ] Sin material no público ni metadatos con nombres de personas (los PDF públicos del curso sí se versionan)

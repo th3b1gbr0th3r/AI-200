@@ -1,6 +1,8 @@
 # Lab LP1-01 · Build and run a container image with ACR Tasks
 
 Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/01-acr-tasks.html
+Documentación oficial del módulo (MS Learn): https://learn.microsoft.com/es-es/training/modules/store-manage-containers-azure-container-registry/
+Notas de clase del learning path: [`docs/modulos/01-alojamiento-contenedores.md`](../../docs/modulos/01-alojamiento-contenedores.md)
 Material de partida: `acr-tasks-python.zip` (https://github.com/MicrosoftLearning/mslearn-azure-ai/raw/main/downloads/python/acr-tasks-python.zip). No se versiona aquí: descargar y descomprimir en esta carpeta (`azdeploy.py` + `api/`).
 
 Ejecutado en Linux (bash) contra la suscripción temporal del lab. La plataforma del curso da los mismos pasos en PowerShell.

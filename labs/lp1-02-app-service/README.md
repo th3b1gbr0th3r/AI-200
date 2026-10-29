@@ -1,6 +1,8 @@
 # Lab LP1-02 · Deploy a container to Azure App Service
 
 Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/02-app-svc-container.html
+Documentación oficial del módulo (MS Learn): https://learn.microsoft.com/es-es/training/modules/deploy-containers-azure-app-service/
+Notas de clase del learning path: [`docs/modulos/01-alojamiento-contenedores.md`](../../docs/modulos/01-alojamiento-contenedores.md)
 Material de partida: `app-svc-container-python.zip` (https://github.com/MicrosoftLearning/mslearn-azure-ai/raw/main/downloads/python/app-svc-container-python.zip). No se versiona aquí: descargar y descomprimir en esta carpeta (`azdeploy.py`, `document.txt`, `api/`).
 
 Ejecutado en Linux (bash). La plataforma del curso da los mismos pasos en PowerShell. Diferencias de la guía de la plataforma respecto a la oficial: región `canadacentral` y SKU del plan `B1` (línea 224 de `azdeploy.py`, el script trae `P0v3`).
