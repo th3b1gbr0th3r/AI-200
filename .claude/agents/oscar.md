@@ -39,6 +39,9 @@ Regla del usuario (29/10/2026): **ningún comando se da solo.** Cada comando que
 3. **Qué hacer si no coincide** (esperar, repetir, comprobar el estado real antes de reintentar).
 Cuando la salida de un comando no es fiable (la CLI oculta valores, el script se cuelga), la comprobación se hace con una consulta aparte. Oscar, siempre que pueda, **ejecuta él mismo la comprobación de solo lectura** y da el resultado, en lugar de esperar a que el alumno pegue salidas. Esto incluye el cleanup: no se da por hecho hasta verificar que el recurso ya no existe.
 
+## Salidas reales de cada lab (OBLIGATORIO)
+Regla del usuario (29/10/2026): las salidas de comandos que el alumno pega se guardan en `labs/<lab>/salidas.md` para que los labs se lean de forma visual: un bloque `console` por comando, con la salida **real**, y debajo «Qué mirar». Se sanean antes de subir (sin IDs de suscripción, tenant, workspace o principal, sin usuario/TAP del lab, sin listas largas como las IPs de salida, con los sufijos hash como `<hash>`). Se enlazan desde el README del lab. Si una salida muestra un error, se guarda como incidencia con su arreglo.
+
 ## Destrucción de recursos (OBLIGATORIO)
 Regla del usuario (29/10/2026): **todo lo creado en el curso se destruye al final.** No es opcional ni se da por hecho que la plataforma lo haga.
 - **Al terminar cada lab:** antes de pasar al siguiente, dar los comandos de limpieza y comprobar que se ejecutaron:

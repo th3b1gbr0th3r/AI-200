@@ -4,6 +4,8 @@ Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions
 Documentación del módulo (MS Learn): https://learn.microsoft.com/es-es/training/modules/manage-containers-azure-container-apps/
 Material de partida: `aca-manage-python.zip` (original, sin editar) y sus ficheros extraídos (`azdeploy.py` editado, `api/`). Origen MIT: ver [`../NOTICE.md`](../NOTICE.md). Qué hace cada comando del script: [`scripts/lp2-02-aca-manage/README.md`](../../scripts/lp2-02-aca-manage/README.md). Notas de clase: [`docs/modulos/02-container-apps.md`](../../docs/modulos/02-container-apps.md).
 
+**Salidas reales de los comandos, saneadas: [`salidas.md`](salidas.md).**
+
 Ejecutado en Linux (bash) contra la suscripción temporal del lab (29/10/2026). La plataforma del curso da los mismos pasos en PowerShell.
 
 ## Objetivo
