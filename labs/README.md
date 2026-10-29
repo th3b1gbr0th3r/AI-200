@@ -6,6 +6,7 @@ Cada lab trae los ficheros de partida de Microsoft (`azdeploy.py`, `api/`, `docu
 |---|---|---|---|
 | [`lp1-01-acr-tasks`](lp1-01-acr-tasks/README.md) | Resource group + ACR **Basic** | API Flask (`app.py`, puerto 5000, `Dockerfile` con `python:3.11-slim`) | [01-acr-tasks](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/01-acr-tasks.html) |
 | [`lp1-02-app-service`](lp1-02-app-service/README.md) | Resource group + ACR (admin desactivado) + build de imagen + App Service Plan Linux | API Flask con gunicorn (`main.py`, puerto 80; `/`, `/health`, `/process`, `/documents`) | [02-app-svc-container](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/02-app-svc-container.html) |
+| [`lp2-01-aca-deploy`](lp2-01-aca-deploy/README.md) | Resource group + ACR + imagen + Container Apps environment (Log Analytics) | API Flask con gunicorn (puerto 8000; `/health`, `/`, `/process`, `/documents`) | [01-aca-deploy-containers](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-container-apps/01-aca-deploy-containers.html) |
 
 ## Cómo funcionan los scripts (patrón común)
 1. **Edición previa:** solo se tocan las variables del principio: `rg` (resource group) y `location`. En el lab 2 además la línea del SKU (`--sku "B1"`; el script trae `P0v3`, y el mensaje impreso `SKU: P0v3` es un texto fijo que no se actualiza, no refleja el SKU real).
@@ -24,7 +25,7 @@ Cada lab trae los ficheros de partida de Microsoft (`azdeploy.py`, `api/`, `docu
 - La imagen de ejemplo se construye en la nube con ACR Tasks: no hace falta Docker local.
 
 ## Labs siguientes
-Los de LP2 (ACA) usarán el mismo patrón (`azdeploy.py` con menú, `.env`) y se incorporarán a esta tabla al hacerlos.
+Los demás de LP2 (ACA) se incorporarán a esta tabla al hacerlos.
 
 ## Catálogo de scripts
 Copia de los `azdeploy.py` con su guía de uso en [`../scripts/`](../scripts/README.md).

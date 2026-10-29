@@ -6,6 +6,7 @@ Catálogo de los scripts de Python (`azdeploy.py`) de los labs de Microsoft, cad
 |---|---|---|
 | [`lp1-01-acr-tasks/azdeploy.py`](lp1-01-acr-tasks/README.md) | Resource group + Azure Container Registry (Basic) | [README](lp1-01-acr-tasks/README.md) |
 | [`lp1-02-app-service/azdeploy.py`](lp1-02-app-service/README.md) | Resource group + ACR + build de imagen + App Service Plan Linux, con menú | [README](lp1-02-app-service/README.md) |
+| [`lp2-01-aca-deploy/azdeploy.py`](lp2-01-aca-deploy/README.md) | Resource group + ACR + imagen + Container Apps environment, con menú | [README](lp2-01-aca-deploy/README.md) |
 
 ## Reglas comunes
 - Cada script espera encontrar **`api/Dockerfile` a su lado** (lo comprueba al arrancar). Las carpetas `api/` están en `../labs/<lab>/api/`: o ejecutas el script desde `labs/<lab>/`, o copias `api/` junto al script.
