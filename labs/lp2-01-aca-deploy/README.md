@@ -222,7 +222,7 @@ az containerapp logs show              → últimas líneas de la consola de la 
 - `az containerapp create`: app `ai-api` creada con ingress externo e identidad gestionada para el pull.
 - Secreto + variable `secretref:` aplicados; revisión `0000002` sana con el 100 % del tráfico (la `0000001` en 0 % mientras se desactiva).
 - Verificación de la API (Task 3) correcta: `/health` healthy, `/` con modelo `gpt-5.1` y secreto configurado, `/process` 200 con análisis simulado y logs de gunicorn con las tres peticiones.
-- **Lab completado.** Cleanup pendiente de decidir (ver abajo).
+- **Lab completado.** Cleanup: lo lanza el alumno (ver abajo).
 
 ## Incidencias y soluciones
 | Síntoma | Causa | Arreglo |
@@ -239,3 +239,16 @@ az group delete --name rg-ai200-aca --no-wait --yes
 az group exists --name rg-ai200-aca
 ```
 La plataforma también desprovisiona los recursos al finalizar el laboratorio.
+
+## Troubleshooting (de la guía de la plataforma)
+| Problema | Comprobación |
+|---|---|
+| Estado base | `python3 azdeploy.py` → opción 3 (ACR, imagen y environment) |
+| Autenticación y variables | `az account show`; `echo $ACR_NAME`; si está vacía, `source .env` |
+| ACR | `az acr list -o table` y `ProvisioningState = Succeeded` |
+| Fallo del build (`az acr build` va en silencio en el script) | ejecutar desde la raíz del proyecto (donde está `api/`); `az acr task list-runs --registry $ACR_NAME -o table`; `az acr task logs --registry $ACR_NAME --run-id <id>`; si una run se queda en `Queued` más de un par de minutos: `az acr task cancel-run … --run-id <id>` y repetir `az acr build` |
+| `ImagePullBackOff` / 403 / unauthorized | `az containerapp identity show -n $CONTAINER_APP_NAME -g $RESOURCE_GROUP` (identidad system-assigned) y rol `AcrPull` sobre el ACR (puede tardar 1-2 min en propagarse) |
+| Arranque o errores de la app | `az containerapp logs show … --follow`; 502/503 justo tras desplegar: esperar un minuto; `az containerapp revision list … -o table` |
+| Secreto | `az containerapp secret list -n $CONTAINER_APP_NAME -g $RESOURCE_GROUP -o table`; llamar a `/` y mirar `embeddings_api_key_configured` |
+
+Recuerda `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` antes de cualquier `az`.
