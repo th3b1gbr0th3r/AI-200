@@ -12,3 +12,4 @@ github.mb
 *.zip
 !labs/**/*.zip
 docs/Links*.txt
+*.docx
