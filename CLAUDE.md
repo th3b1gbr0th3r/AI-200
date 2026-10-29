@@ -6,7 +6,7 @@ Repo de documentación y labs del curso AI-200 (Microsoft). El usuario es SysOps
 - Agente especializado: `.claude/agents/oscar.md` (se llama **oscar**; Azure + DevOps). Delega en él las dudas de Azure.
 - `github.mb` contiene credenciales de GitHub: está en `.gitignore`, **nunca** subirlo, mostrarlo ni copiarlo a la URL del remote. Para push usar cabecera temporal (`git -c http.extraHeader=...`) sin guardar el token en `.git/config`.
 - Estructura: `docs/00-plan` (plan y temario), `docs/modulos` (notas por módulo), `labs/` (prácticas con IaC), `notas/` (apuntes sueltos).
-- Los labs crean recursos con coste: confirmar antes de desplegar y limpiar al terminar.
+- Los labs crean recursos con coste: confirmar antes de desplegar. **Obligatorio: destruir todo lo creado en el curso al final de cada lab y al cierre del día** (regla vinculante para el agente oscar; ver `.claude/agents/oscar.md`).
 - Los scripts de aprovisionamiento de Microsoft de cada lab (`azdeploy.py`, `api/`, `document.txt`, y el zip original) se versionan en `labs/<lab>/`: el repo de origen es MIT (ver `labs/NOTICE.md`). Los `.env` generados no se suben. Las presentaciones y los knowledge check del curso son públicos y se versionan en `docs/` solo en PDF, sin duplicar formatos y sin metadatos de autor; los zips de `docs/` y `docs/Links*.txt` no.
 
 ## Guías oficiales de labs
