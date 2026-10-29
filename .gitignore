@@ -10,3 +10,9 @@ github.mb
 # Material con copyright del curso (solo local)
 *.pdf
 *.pptx
+
+# Zips (redundantes: los scripts de los labs se versionan extraídos) y docx del curso
+*.zip
+!labs/**/*.zip
+*.docx
+docs/Links*.txt

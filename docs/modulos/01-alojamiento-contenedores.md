@@ -2,6 +2,18 @@
 
 Resumen propio de la presentación del instructor (no se reproduce el material con copyright). Pensado para un perfil SysOps/K8s: se indica el equivalente en Kubernetes cuando existe.
 
+## Documentación oficial y nuestros pasos
+
+Learning path de MS Learn: [Implementación del hospedaje de aplicaciones de contenedor en Azure](https://learn.microsoft.com/es-es/training/paths/implement-container-app-hosting-azure/) (3 módulos). Las diapositivas del instructor cubren los dos primeros.
+
+| Módulo | Documentación oficial (MS Learn) | Lab oficial | Nuestros pasos detallados |
+|---|---|---|---|
+| 1 · ACR | [Almacenamiento y administración de contenedores en Azure Container Registry](https://learn.microsoft.com/es-es/training/modules/store-manage-containers-azure-container-registry/) | [Build and run a container image with ACR Tasks](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/01-acr-tasks.html) | [`labs/lp1-01-acr-tasks/README.md`](../../labs/lp1-01-acr-tasks/README.md) |
+| 2 · App Service | [Implementación de contenedores en Azure App Service](https://learn.microsoft.com/es-es/training/modules/deploy-containers-azure-app-service/) | [Deploy a container to Azure App Service](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/02-app-svc-container.html) | [`labs/lp1-02-app-service/README.md`](../../labs/lp1-02-app-service/README.md) |
+| 3 · Sidecar | [Ejecutar aplicaciones de IA con sidecar en Azure App Service](https://learn.microsoft.com/es-es/training/modules/deploy-sidecar-azure-app-service/) | [Deploy an AI API with a local model-serving sidecar](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/03-app-svc-sidecar.html) | pendiente (extra; confirmar con el docente) |
+
+**Módulo 3 (no está en las diapositivas):** según su descripción oficial, usa *sidecars* de App Service para ejecutar componentes de IA estrechamente acoplados junto al contenedor principal de la app Linux, y cubre la descarga segura de imágenes, la comunicación local, los archivos compartidos y el diagnóstico de toda la aplicación. Detalle por completar al leerlo.
+
 ## Módulo 1 · Azure Container Registry (ACR)
 
 **Qué es:** registro privado gestionado de imágenes Docker y artefactos OCI (Helm charts incluidos). Se integra con AKS, Container Apps y App Service. Tiers: Basic, Standard, Premium (geo-replicación solo en Premium).
@@ -44,6 +56,7 @@ Resumen propio de la presentación del instructor (no se reproduce el material c
 **Diagnóstico:** logs de contenedor (stdout/stderr + eventos de plataforma, hay que **activarlos explícitamente**), `az webapp log tail`, consola Kudu (SCM), envío a Log Analytics (`ConsoleLogs`, `HTTPLogs`, `PlatformLogs`) para KQL y alertas.
 
 ## Knowledge check (respuestas)
+Detalle de cada opción y por qué fallan las demás: [`docs/tests/lp1-knowledge-check.md`](../tests/lp1-knowledge-check.md).
 
 | Pregunta | Respuesta | Por qué |
 |---|---|---|
