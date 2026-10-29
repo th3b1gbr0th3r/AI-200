@@ -27,11 +27,15 @@ Numeración de la plataforma del curso: LP1 = labs 1-2, LP2 = labs 3-5. El módu
 - Dynamic sessions (LP2) y el sidecar (LP1) no figuran en el planning del docente: se dan por no previstos salvo aviso.
 
 ## Aprendizajes
-_(pendiente: se rellena al cerrar el día con `/aprender`)_
+Entrada completa en [`docs/aprendizajes.md`](../docs/aprendizajes.md) (2026-10-29).
+- **Principal:** el escalado HTTP de ACA depende de la concurrencia por réplica (regla de 10): 1 → 3 → 5 réplicas con 25 workers y `delayMs 500`.
+- **Apoyo:** una revisión nueva por cada cambio de plantilla; diagnóstico con `logs show` y Log Analytics.
+- **Apoyo:** `--no-wait` no espera; el borrado se verifica con `az group list`.
 
 ## Pendientes
-- Cleanup del lab 3 (`rg-ai200-aca`) tras decidir si los labs 4 y 5 reutilizan recursos; la plataforma desprovisiona al finalizar.
-- Labs 4 (Manage) y 5 (Scale), con la guía de la plataforma.
-- Cleanup del lab 2 de LP1 (`rg-ai200-appsvc`) si la plataforma no lo desprovisiona.
+- ~~Cleanup de los labs 2, 3 y 4~~: hecho; al reautenticarse solo quedaba `rg-ai200-aca-scale` (la plataforma había desprovisionado el resto).
+- Cleanup del lab 5 (`rg-ai200-aca-scale`): `az group delete` lanzado, estado `Deleting`; falta ver la lista vacía.
+- Tarea 4 del lab 5 (escalado desde YAML): no ejecutada, el grupo se borró antes.
+- ~~Labs 4 y 5~~: hechos y documentados.
 - Corrección en clase de las 4 preguntas de LP1 y 6 de LP2.
 - Siguiente: LP3 AKS.

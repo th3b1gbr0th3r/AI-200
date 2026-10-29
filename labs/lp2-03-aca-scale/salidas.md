@@ -79,3 +79,43 @@ $ az containerapp replica list -n agent-api -g rg-ai200-aca-scale --query "lengt
 5
 ```
 **Qué mirar:** de **1** réplica (despliegue base) a **5** durante la carga: la regla HTTP (10 peticiones concurrentes por réplica) está escalando. Con 25 workers saldrían ~3; con más concurrencia, más, hasta un máximo de 10.
+
+## 6 · Cleanup: reautenticación, inventario y borrado del grupo
+```console
+$ export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt && az login
+...
+[1] *  XLabs-245   <id-suscripcion>   Lab Directory
+$ az account show --query "{usuario:user.name, sub:name}" -o table
+Usuario                     Sub
+--------------------------  ---------
+XLab-<id>@xtremelabs.us     XLabs-245
+
+$ az group list --query "[?starts_with(name,'rg-ai200')].name" -o tsv
+rg-ai200-aca-scale
+
+$ az resource list -g rg-ai200-aca-scale -o table
+Name                           ResourceGroup       Location    Type                                      Status
+-----------------------------  ------------------  ----------  ----------------------------------------  ---------
+acr964ff64b                    rg-ai200-aca-scale  eastus      Microsoft.ContainerRegistry/registries    Succeeded
+workspace-rgai200acascalekJ8j  rg-ai200-aca-scale  eastus      Microsoft.OperationalInsights/workspaces  Succeeded
+aca-env-964ff64b               rg-ai200-aca-scale  eastus      Microsoft.App/managedEnvironments         Succeeded
+agent-api                      rg-ai200-aca-scale  eastus      Microsoft.App/containerApps               Succeeded
+
+$ az group delete --name rg-ai200-aca-scale --no-wait --yes
+(sin salida)
+
+$ az group list --query "[?starts_with(name,'rg-ai200')].[name,properties.provisioningState]" -o table
+Column1             Column2
+------------------  ---------
+rg-ai200-aca-scale  Deleting
+```
+**Qué mirar:** la sesión se cortó y hubo que reautenticarse con el Temporary Access Pass (no se guarda). Solo quedaba el grupo del lab 5, con sus 4 recursos (ACR, workspace, environment y app); los grupos de los labs anteriores ya no existían, así que la plataforma los había desprovisionado. Tras el `delete --no-wait` el estado pasa a `Deleting`; falta la comprobación final con lista vacía.
+
+Comprobación posterior (≈20 min después del `delete`):
+```console
+$ az group list -o table
+Name                Location    Status
+------------------  ----------  --------
+rg-ai200-aca-scale  eastus      Deleting
+```
+**Qué mirar:** el borrado sigue en curso; el grupo es el único que queda y hay que volver a comprobar hasta que la lista salga vacía.

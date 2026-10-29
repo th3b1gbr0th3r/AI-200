@@ -16,7 +16,7 @@ azdeploy.py (2) → Container Apps environment (+ Log Analytics workspace)
 azdeploy.py (3) → container app "agent-api" (identidad gestionada + AcrPull), min 1 / max 1 réplica, AGENT_DEFAULT_DELAY_MS=500
 Task 2          → regla HTTP: min 0, max 10, 10 peticiones concurrentes por réplica   → revisión 0000002
 Task 3          → dashboard local (client/) genera carga → las réplicas suben (1 → 5)
-Task 4          → exportar config a YAML y ajustar scale (cooldown 200, max 5, min 1)   [pendiente]
+Task 4          → exportar config a YAML y ajustar scale (cooldown 200, max 5, min 1)   [no ejecutada]
 ```
 
 ## Qué contiene la aplicación
@@ -85,13 +85,14 @@ az containerapp update            → modifica la plantilla; crea una revisión 
 - **Por qué no son exactamente `25 ÷ 10`:** la carga se lanzó varias veces y el escalador mide con margen; lo que cuenta es la relación (más concurrencia, más réplicas).
 - **Si no escala:** subir `delayMs` (500-1500 ms) y la concurrencia; revisar la regla con `az containerapp show --query "properties.template.scale"`; eventos de plataforma con `az containerapp logs show --type system --tail 50`.
 
-### 4. Escalado desde YAML — pendiente
+### 4. Escalado desde YAML — no ejecutada
 Según la guía: `az containerapp show … --output yaml > app-config.yaml`, ajustar en `properties > template > scale` (`cooldownPeriod: 200`, `maxReplicas: 5`, `minReplicas: 1`, `pollingInterval: 30`) y aplicar con `az containerapp update … --yaml app-config.yaml`. Si falla, quitar propiedades de solo lectura (`id`, `systemData`, `type`) y revisar la indentación.
 
 ## Resultados
 - Despliegue base correcto: 1 réplica, revisión `0000001` sana, pull por identidad `system`.
 - Regla `http-scaling` aplicada (revisión `0000002`) y **escalado verificado**: 1 → 3 → 5 réplicas con carga, 0 peticiones fallidas.
-- YAML y cleanup: pendientes.
+- YAML: no ejecutada (el grupo se borró antes de hacerla).
+- Cleanup: `az group delete --name rg-ai200-aca-scale --no-wait --yes` lanzado por el alumno; estado `Deleting` ([`salidas.md`](salidas.md), sección 6). Falta confirmar la lista vacía.
 
 ## Incidencias y soluciones
 | Síntoma | Causa | Arreglo |
