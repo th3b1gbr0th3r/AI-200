@@ -25,3 +25,6 @@ Cada lab trae los ficheros de partida de Microsoft (`azdeploy.py`, `api/`, `docu
 
 ## Labs siguientes
 Los de LP2 (ACA) usarán el mismo patrón (`azdeploy.py` con menú, `.env`) y se incorporarán a esta tabla al hacerlos.
+
+## Catálogo de scripts
+Copia de los `azdeploy.py` con su guía de uso en [`../scripts/`](../scripts/README.md).
