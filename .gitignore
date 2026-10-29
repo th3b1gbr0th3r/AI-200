@@ -22,3 +22,7 @@ docs/Links*.txt
 venv/
 __pycache__/
 *.pyc
+
+# Exportaciones de configuración de apps (llevan IDs, principal e IPs)
+app-config.yaml
+*-config.yaml
