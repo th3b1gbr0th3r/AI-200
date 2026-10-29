@@ -7,12 +7,8 @@ github.mb
 *.key
 .claude/settings.local.json
 
-# Material con copyright del curso (solo local)
-*.pdf
-*.pptx
 
-# Zips (redundantes: los scripts de los labs se versionan extraídos) y docx del curso
+# Zips descargados del curso (duplican los PDF/docx sueltos); los de labs/ sí se versionan
 *.zip
 !labs/**/*.zip
-*.docx
 docs/Links*.txt
