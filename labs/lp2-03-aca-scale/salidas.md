@@ -60,3 +60,22 @@ CreatedTime                Active    Replicas    TrafficWeight    HealthState   
 2026-10-29T20:13:04+00:00  True      1           100              Healthy        Provisioned          agent-api--0000002
 ```
 **Qué mirar:** `minReplicas 0`, `maxReplicas 10` y la regla `http-scaling` con `concurrentRequests: "10"`. El cambio de escalado está en la plantilla, así que crea la revisión `0000002`.
+
+## 4 · Dashboard de carga en marcha (Flask, `client/`)
+```console
+$ cd client
+$ python3 -m venv .venv && source .venv/bin/activate
+$ pip install -q -r requirements.txt
+$ python3 app.py
+Dashboard running at http://127.0.0.1:5000
+ * Serving Flask app 'app'
+ * Debug mode: off
+```
+**Qué mirar:** el dashboard escucha en `127.0.0.1:5000`. Lee `RESOURCE_GROUP` y `CONTAINER_APP_NAME` de las variables de la terminal (hay que hacer `source .env` antes) y consulta las réplicas con `az containerapp replica list`.
+
+## 5 · Las réplicas suben con la carga
+```console
+$ az containerapp replica list -n agent-api -g rg-ai200-aca-scale --query "length(@)" -o tsv
+5
+```
+**Qué mirar:** de **1** réplica (despliegue base) a **5** durante la carga: la regla HTTP (10 peticiones concurrentes por réplica) está escalando. Con 25 workers saldrían ~3; con más concurrencia, más, hasta un máximo de 10.

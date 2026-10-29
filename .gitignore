@@ -16,3 +16,9 @@ docs/Links*.txt
 
 # Transcripciones de clase (solo local; se extrae el contenido a docs/, nunca se publican)
 *transcript*.txt
+
+# Entornos virtuales y cachés de Python
+.venv/
+venv/
+__pycache__/
+*.pyc
