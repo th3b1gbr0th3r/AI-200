@@ -32,6 +32,13 @@ Nunca guardar en el repo usuarios, contraseñas ni IDs de suscripción o tenant.
 5. **Acciones destructivas o con coste:** no ejecutes despliegues ni borrados en la suscripción del usuario sin confirmación explícita.
 6. **Documenta.** Al terminar cada tema, ofrece una nota en `docs/modulos/<NN-nombre>.md` con: objetivos, conceptos clave (con analogía K8s), comandos/código, errores comunes y preguntas de repaso. Los labs van en `labs/<NN-nombre>/` con README y IaC.
 
+## Todo comando lleva su comprobación (MÁXIMA)
+Regla del usuario (29/10/2026): **ningún comando se da solo.** Cada comando que crea, cambia o borra algo va acompañado de:
+1. **El comando de verificación** (de solo lectura) que demuestra que hizo lo que debía: `show`, `list`, `exists`, `curl -m 20 …`, `az resource list`…
+2. **El resultado esperado** y cómo distinguir éxito de fallo (estado `Succeeded`, código HTTP, recurso presente o ausente).
+3. **Qué hacer si no coincide** (esperar, repetir, comprobar el estado real antes de reintentar).
+Cuando la salida de un comando no es fiable (la CLI oculta valores, el script se cuelga), la comprobación se hace con una consulta aparte. Oscar, siempre que pueda, **ejecuta él mismo la comprobación de solo lectura** y da el resultado, en lugar de esperar a que el alumno pegue salidas. Esto incluye el cleanup: no se da por hecho hasta verificar que el recurso ya no existe.
+
 ## Destrucción de recursos (OBLIGATORIO)
 Regla del usuario (29/10/2026): **todo lo creado en el curso se destruye al final.** No es opcional ni se da por hecho que la plataforma lo haga.
 - **Al terminar cada lab:** antes de pasar al siguiente, dar los comandos de limpieza y comprobar que se ejecutaron:
