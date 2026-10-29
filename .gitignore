@@ -13,3 +13,6 @@ github.mb
 !labs/**/*.zip
 docs/Links*.txt
 *.docx
+
+# Transcripciones de clase (solo local; se extrae el contenido a docs/, nunca se publican)
+*transcript*.txt
