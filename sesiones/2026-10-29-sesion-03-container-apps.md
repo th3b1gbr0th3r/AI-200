@@ -34,7 +34,7 @@ Entrada completa en [`docs/aprendizajes.md`](../docs/aprendizajes.md) (2026-10-2
 
 ## Pendientes
 - ~~Cleanup de los labs 2, 3 y 4~~: hecho; al reautenticarse solo quedaba `rg-ai200-aca-scale` (la plataforma había desprovisionado el resto).
-- Cleanup del lab 5 (`rg-ai200-aca-scale`): `az group delete` lanzado, estado `Deleting`; falta ver la lista vacía.
+- ~~Cleanup del lab 5 (`rg-ai200-aca-scale`)~~: realizado (`az group delete` lanzado el 29/10; el alumno lo da por completado el 30/10).
 - Tarea 4 del lab 5 (escalado desde YAML): no ejecutada, el grupo se borró antes.
 - ~~Labs 4 y 5~~: hechos y documentados.
 - Corrección en clase de las 4 preguntas de LP1 y 6 de LP2.
