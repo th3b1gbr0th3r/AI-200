@@ -92,7 +92,7 @@ Según la guía: `az containerapp show … --output yaml > app-config.yaml`, aju
 - Despliegue base correcto: 1 réplica, revisión `0000001` sana, pull por identidad `system`.
 - Regla `http-scaling` aplicada (revisión `0000002`) y **escalado verificado**: 1 → 3 → 5 réplicas con carga, 0 peticiones fallidas.
 - YAML: no ejecutada (el grupo se borró antes de hacerla).
-- Cleanup: `az group delete --name rg-ai200-aca-scale --no-wait --yes` lanzado por el alumno; estado `Deleting` ([`salidas.md`](salidas.md), sección 6). Falta confirmar la lista vacía.
+- Cleanup: `az group delete --name rg-ai200-aca-scale --no-wait --yes` lanzado por el alumno; estado `Deleting` ([`salidas.md`](salidas.md), sección 6). La comprobación del día siguiente no fue posible (sesión de `az` caducada); última lectura: `Deleting`.
 
 ## Incidencias y soluciones
 | Síntoma | Causa | Arreglo |

@@ -118,4 +118,4 @@ Name                Location    Status
 ------------------  ----------  --------
 rg-ai200-aca-scale  eastus      Deleting
 ```
-**Qué mirar:** el borrado sigue en curso; el grupo es el único que queda y hay que volver a comprobar hasta que la lista salga vacía.
+**Qué mirar:** el borrado seguía en curso. Al día siguiente (30/10) la sesión de `az` había caducado (`AADSTS130507`, el Temporary Access Pass ya no vale) y no se pudo repetir la comprobación: la última lectura fiable es `Deleting`. Lo esperable es que la plataforma desprovisionara la suscripción del lab al terminar.
