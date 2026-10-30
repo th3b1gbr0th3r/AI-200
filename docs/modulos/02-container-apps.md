@@ -146,5 +146,59 @@ _(Detalle por completar al leer el módulo o hacer el lab 4.)_
 - Iterar rápido vs releases seguras: ¿cómo se equilibra cuando una imagen nueva puede traer fallos de runtime o de probes? (revisiones + readiness + modo multiple con tráfico gradual)
 - Tráfico impredecible en cargas de IA: ¿escalado HTTP simple, event-driven con KEDA o gestión deliberada de tráfico entre revisiones? ¿Cómo no pagar de más?
 
-## Notas de la clase del 29/10/2026
-_(pendiente: completar durante/después de la clase)_
+## Notas de la clase del 29/10/2026 (a partir de la transcripción de Zoom)
+Resumen propio del contenido técnico y organizativo, ordenado por temas; sin nombres de personas. La transcripción automática es ruidosa, cubre solo hasta el inicio de los labs y no se publica.
+
+**Organización del curso y del día**
+- Orden del día: corrección del test de LP1, teoría de las 3 lecciones de LP2 seguidas y después los 3 labs de la plataforma (`LP02M01..03`). Se junta toda la teoría para ir a la par; quien termine antes puede marcharse.
+- Los labs son **independientes entre sí** (se pueden repetir, o hacer en otro orden), aunque se hacen en orden para ir acompasados; los ya hechos aparecen como *review lab*. Es poco habitual que cada módulo tenga su lab.
+- Todos siguen un patrón parecido: script de Python con menú numerado que aprovisiona recursos. Se recomienda **leer el script** (qué funciones llama) y conectarse al **portal** con las mismas credenciales: cada servicio tiene su icono y quien administra sistemas lo mira ahí.
+- El test del día (carpeta compartida) se hace al terminar los labs y se corrige al inicio de la siguiente clase (el docente dijo «mañana»; la próxima sesión es el martes, confirmar). Siguiente tema: AKS (LP3).
+
+**Examen**
+- Habrá muchas preguntas tipo test como las de los knowledge check, pero más difíciles: normalmente 4 o 5 opciones (algunas de selección múltiple), arrastrar y soltar, desplegables y casos de estudio. Las respuestas del test de LP1 son todas la A (ver [`docs/tests/lp1-knowledge-check.md`](../tests/lp1-knowledge-check.md)).
+- No memorizar comandos; sí entender qué hace cada pieza.
+
+**Contexto: ACI, ACA y AKS**
+- **ACI** (Azure Container Instances): PaaS que oculta una VM; vale para un contenedor o un *container group*, pero sin escalado ni control de versiones. No se estudia.
+- **AKS**: Kubernetes gestionado (martes). **ACA**: plataforma propia de Microsoft construida sobre Kubernetes, **sin acceso al plano de control ni al sistema operativo**; puede aparecer un resource group adicional gestionado por la plataforma: se mira, no se toca.
+- Microsoft alude a la IA con intención de marketing; el contenido de contenedores es el mismo.
+
+**Environments y despliegue**
+- El **environment** se aprovisiona primero: aísla las apps entre sí y comparte red, DNS interno y logs (Azure Monitor). Separar por ciclo de vida (dev/test/prod) y por red; decidir el destino de logs antes de producción.
+- Vías: `up` (rápida, decide ella), `create` (más control, environment existente) y `--yaml` (configuración revisable como código; en el lab se lanzará una revisión nueva cambiando el YAML). Azure documenta sobre todo en JSON; Bicep y Terraform van por el lado de IaC.
+- El script del lab genera un fichero de variables que **hay que cargar** antes de seguir (`.env`/`.env.ps1`).
+
+**Secretos, registro e identidad**
+- Variables de entorno para lo no sensible y **secretos** aparte, rotables sin reconstruir la imagen. No dejar valores en YAML ni en el historial de comandos; sí se puede **referenciar la URI de Key Vault** (módulo posterior): si se expone solo se ve dónde está, no el valor.
+- Pull de imágenes: usuario y contraseña vale con cualquier registro (ACR, Docker Hub, GitHub) pero hay que rotarlos; la **identidad gestionada** solo aplica a recursos de Azure autenticables con Entra, no deja credenciales y se concede con `AcrPull` (mínimo privilegio). `--identity system` para ACR.
+
+**Operación (día 2) y monitorización**
+- Verificar: **logs primero** (consola = salida de la app; sistema = eventos de plataforma como pull o escalado), luego revisiones (incluidas las inactivas) y réplicas.
+- Tag mutable, **digest inmutable**: en producción, digest para trazar la revisión exacta.
+- **Desactivar, no eliminar** las revisiones con problemas; definir retención de las inactivas. A veces es más rápido rehacer desde cero y analizar después.
+- Stop = tráfico 0 (incidentes) · restart = limpia estado (procesos atascados) · desactivar revisión = aísla una versión mala (lo más seguro).
+- Fallos habituales: credenciales del registro, puertos, secretos o variables ausentes, probes y presión de recursos (OOM, throttling).
+- Logs estructurados con ID de petición, revisión y versión del modelo, y latencias de dependencias (para saber si el cuello de botella es externo); sin contenido sensible.
+- **Monitorizar cuesta** (Azure Monitor, Application Insights, Container Insights son de pago por uso): ser preciso, no monitorizar todo.
+
+**Health probes**
+- Son los *health checks* de toda la vida. Dar margen de arranque (delay y umbral de fallos generosos) para evitar falsos positivos durante el calentamiento; que no dependan de servicios externos. Si fallan nada más desplegar: puerto, ruta (las URI son largas y fáciles de equivocar) y timeout.
+
+**Dimensionado y coste**
+- CPU throttling → más CPU por réplica · OOM → más memoria. Coste = tamaño × nº de réplicas.
+- API síncrona: mínimo de réplicas para evitar *cold start*. Worker dirigido por eventos: escalar a 0 (más rendimiento por coste, más latencia al arrancar).
+- Cambiar **una variable cada vez**, medir y reevaluar. A veces pocas máquinas grandes salen más baratas que muchas pequeñas (caso real de escritorios virtuales).
+- Memoria al menos 2× la CPU (2 CPU → 4 GiB). Pasarse de memoria reinicia; pasarse de CPU ralentiza.
+
+**Escalado y KEDA**
+- Vertical (más CPU/RAM por instancia) frente a horizontal (*scale out/in*, más réplicas tras un balanceador transparente). También hay que **desescalar**, para no quedarse en el máximo.
+- Límite de 0 a 1000 réplicas, impuesto por el balanceador básico de Azure; poner un máximo bajo al principio (en el lab se fija) para no arruinarse.
+- Las reglas son disparadores sobre valores medios en un periodo (ejemplo: CPU media > 70 % durante 10 min), no sobre picos puntuales; no todo es CPU.
+- Integradas: **HTTP** (10 peticiones concurrentes por réplica por defecto), TCP, CPU y memoria (**estas dos no escalan a 0**).
+- **KEDA** = Kubernetes Event-Driven Autoscaling; consulta cada 30 s. Service Bus (hay lab), Event Hubs (no se estudia; sí Event Grid), Storage Queue y Blob; Kafka, Redis (módulo propio), **Cron** (pre-escalado planificado, p. ej. 8:00-17:00) y Prometheus. Autenticación con identidad gestionada o cadena de conexión en secreto.
+- Los escaladores se **combinan** (cron para la base, HTTP/eventos para la demanda); gana el que pide más réplicas dentro del mínimo y máximo.
+
+**Revisiones y reparto de tráfico**
+- **Single**: una activa; se hace el *cutover*. **Multiple**: varias activas con reparto por porcentaje (probar una versión nueva con pocos usuarios; si las incidencias se concentran en ella, es la sospechosa). **Etiquetas de revisión**: URL propia para pruebas; se parece al swap entre *deployment slots* de App Service.
+- El lab 5 es el que más gustó al docente: se escala por peticiones HTTP concurrentes y se satura la API.

@@ -286,7 +286,7 @@ az acr task list-runs --registry $ACR_NAME -o table                             
 - Paso 13 (`log tail`): no se confirmó el stream en vivo.
 - Paso 14 (Kudu): URL generada; el alumno no llegó a informar de lo que vio en Environment, la consola ni `/home/LogFiles/`.
 - Experimento opcional (reiniciar la app y comprobar que `/documents` conserva el documento): no realizado.
-- Cleanup: la plataforma de labs desprovisiona los recursos al finalizar el laboratorio (según el docente); además se puede borrar a mano con el comando del paso 16. Pendiente de ejecutar por el alumno.
+- Cleanup: la plataforma de labs desprovisiona los recursos al finalizar el laboratorio (según el docente); además se puede borrar a mano con el comando del paso 16. El 29/10 `rg-ai200-appsvc` ya no existía: la plataforma lo desprovisionó.
 
 ## Cleanup y troubleshooting (de la guía de la plataforma)
 

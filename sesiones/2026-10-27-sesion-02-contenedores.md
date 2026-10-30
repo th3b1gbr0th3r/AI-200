@@ -160,7 +160,7 @@ PR nº 2 (lab 1) mergeada; PR nº 3 (lab 2 y cierre) pendiente de merge.
 | `Invoke-RestMethod -Method Post ...` | `curl -X POST ...` |
 
 ## Pendientes
-- Cleanup del lab 2: según el docente, la plataforma desprovisiona los recursos al finalizar el laboratorio; además, `az group delete --name rg-ai200-appsvc --no-wait --yes` lo ejecuta el alumno. Finalizar el lab en la plataforma.
+- ~~Cleanup del lab 2~~: hecho; el 29/10 `rg-ai200-appsvc` ya no existía (desprovisionado por la plataforma).
 - Confirmar qué se ve en Kudu (Environment, consola, `/home/LogFiles/`) y repetir la prueba de `log tail` con dos terminales.
 - Experimento opcional: reiniciar la app y comprobar que el documento sobrevive en `/home`.
 - Lab 3 (sidecar con modelo local), por confirmar con el docente; preguntas de discusión en grupo del LP1.

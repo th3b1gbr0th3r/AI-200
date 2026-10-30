@@ -2,6 +2,24 @@
 
 Un aprendizaje por día, recogido con la skill `/aprender`. Más reciente arriba.
 
+## 2026-10-29 · Container Apps: escalado por concurrencia, revisiones y limpieza
+- **Aprendizaje:** el escalado de ACA (KEDA por debajo) con la regla `http-scaling` se decide por **peticiones concurrentes por réplica** (aquí 10), no por peticiones por segundo. Con 25 workers y `delayMs 500` las réplicas subieron 1 → 3 → 5 con 0 peticiones fallidas; sin `delayMs` las peticiones no se solapan y no escala.
+- **Más aprendizajes del día:**
+  - *Revisiones:* un cambio de plantilla (escala, imagen, variables) crea una revisión nueva (`0000002`); el diagnóstico de los fallos del lab 4 se hizo con `az containerapp logs show` y Log Analytics (KQL).
+  - *Limpieza:* `az group delete --no-wait` devuelve el prompt sin esperar; el borrado se comprueba aparte con `az group list` (`Deleting` → vacío). Los grupos de los labs 2, 3 y 4 ya los había desprovisionado la plataforma.
+- **Analogía K8s:** regla HTTP de ACA = KEDA `ScaledObject` con trigger HTTP (HPA con métrica personalizada); revisión = ReplicaSet de un rollout del Deployment.
+- **Comando / código:**
+  ```bash
+  az containerapp show -n $CONTAINER_APP_NAME -g $RESOURCE_GROUP --query "properties.template.scale" -o json
+  az containerapp replica list -n $CONTAINER_APP_NAME -g $RESOURCE_GROUP --query "length(@)" -o tsv
+  az containerapp logs show -n $CONTAINER_APP_NAME -g $RESOURCE_GROUP --type system --tail 50
+  ```
+- **Error típico:**
+  - La app no escala bajo carga → las peticiones no se solapan → subir `delayMs` (500-1500 ms) y la concurrencia.
+  - Se corta la sesión de `az` → caduca el login → reautenticar con el Temporary Access Pass (solo login interactivo) y repetir el `export REQUESTS_CA_BUNDLE=…` por el proxy.
+- **Repaso:** una container app con regla HTTP de 10 peticiones concurrentes por réplica recibe 50 concurrentes sostenidas, con `maxReplicas 10`. ¿Cuántas réplicas esperas?
+  A. 1 · B. 5 · C. 10 · D. 50 → **B**.
+
 ## 2026-10-27 · Contenedores en Azure: ACR Tasks y App Service sin secretos
 - **Aprendizaje:** una web app se autentica contra el ACR **sin contraseña** en tres pasos separados: identidad system-assigned en la app (quién soy) → rol `AcrPull` limitado a ese ACR (qué puedo hacer) → `acrUseManagedIdentityCreds=true` (usa esa identidad para el pull). El ACR puede crearse con `--admin-enabled false`.
 - **Más aprendizajes del día:**

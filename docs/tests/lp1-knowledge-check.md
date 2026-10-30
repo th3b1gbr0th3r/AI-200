@@ -65,4 +65,9 @@ Documentación oficial: [módulo 1 · ACR](https://learn.microsoft.com/es-es/tra
 | 4 | A | Slot setting |
 
 ## Corrección del profesor
-_(pendiente: añadir cuando se incorporen las transcripciones de la clase)_
+Corregido en clase por el docente (29/10/2026, a partir de la transcripción). Todas las respuestas son la **A**.
+- **Pregunta 1:** «localmente» no cuadra con estaciones de trabajo; la geo-replicación solo hace el servicio disponible en varias regiones y los *namespaces* no tienen que ver. Los comandos de ACR Tasks (`az acr build`…) son los que sirven para configurar y desplegar contenedores en Azure, como se vio en el lab 1.
+- **Pregunta 2:** el **digest** es lo que no cambia en la identificación de la imagen aunque se reutilice el nombre; cada vez que se actualiza una imagen cambia, así que los tags no sirven para identificar una imagen concreta cuando hay varias.
+- **Pregunta 3:** App Service usa por defecto 80 y 8080; para otro puerto se indica con `WEBSITES_PORT`. Cambiar el `EXPOSE` a 80 no tiene sentido y lo de HTTP/2 es un farol.
+- **Pregunta 4:** lo que cambia según el slot (producción, staging o pruebas) se configura como *slot setting*, para que cada entorno apunte a su endpoint al hacer el swap.
+- **Sobre el examen real:** habrá muchas preguntas de este estilo pero con más dificultad, normalmente con 4 o 5 opciones (algunas múltiples) y también arrastrar y soltar, desplegables y casos de estudio. Se corregirá un test cada día.

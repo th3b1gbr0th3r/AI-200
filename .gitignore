@@ -13,3 +13,16 @@ github.mb
 !labs/**/*.zip
 docs/Links*.txt
 *.docx
+
+# Transcripciones de clase (solo local; se extrae el contenido a docs/, nunca se publican)
+*transcript*.txt
+
+# Entornos virtuales y cachés de Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Exportaciones de configuración de apps (llevan IDs, principal e IPs)
+app-config.yaml
+*-config.yaml

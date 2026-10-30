@@ -41,3 +41,17 @@ Salida esperada: `Resource group created`, `ACR created` y `Deployment Complete!
 az group delete --name rg-ai200-acr --no-wait --yes
 ```
 Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions/container-hosting/01-acr-tasks.html · Comandos al detalle: [`labs/lp1-01-acr-tasks/README.md`](../../labs/lp1-01-acr-tasks/README.md)
+
+## Qué hace el script, comando a comando
+Este script **no tiene menú**: `main()` ejecuta de principio a fin estos pasos. Las piezas de apoyo (`run_quiet`, `az_query`, `write_env_files`…) están explicadas en [`../README.md`](../README.md#funciones-comunes-de-todos-los-scripts-qué-hacen-y-por-qué).
+
+| # | Paso en el código | Comando(s) `az` | Qué hace y por qué |
+|---|---|---|---|
+| 1 | `_preflight()` | — | Verifica `api/Dockerfile` y fija el directorio de trabajo |
+| 2 | `require_az_login()` | `az ad signed-in-user show --query id -o tsv` | Comprueba la sesión y obtiene el *object id* del usuario |
+| 3 | `_derived_names()` | — | Calcula el nombre del ACR: `acr` + 8 caracteres del SHA-1 del object id |
+| 4 | `create_resource_group()` | `az group exists --name rg-ai200-acr` → `az group create --name rg-ai200-acr --location eastus` | Crea el resource group si no existe |
+| 5 | `create_acr()` | `az acr create --resource-group rg-ai200-acr --name acr<hash> --sku Basic` | Crea el registry. Aquí **no** construye ninguna imagen: eso es el primer paso manual del lab (`az acr build --image inference-api:v1.0.0 ./api`) |
+| 6 | `write_env_files()` | — | Escribe `RESOURCE_GROUP`, `ACR_NAME` y `LOCATION` en `.env` y `.env.ps1` |
+
+Resultado: un resource group con un ACR vacío y las variables listas para el resto del lab. Los comandos manuales posteriores (`az acr build`, `az acr run`, `az acr task list-runs`, `az acr repository update`…) están desglosados en [`labs/lp1-01-acr-tasks/README.md`](../../labs/lp1-01-acr-tasks/README.md).
