@@ -2,6 +2,30 @@
 
 Un aprendizaje por día, recogido con la skill `/aprender`. Más reciente arriba.
 
+## 2026-11-03 · AKS en un PC con proxy: `az aks command invoke`, apply vs imperativo y AcrPull
+- **Aprendizaje:** el proxy de empresa re-firma el TLS y **bloquea el API server de AKS** (`x509` y luego `502 IncompleteCertChain`), así que `kubectl` local no llega al cluster. `az aks command invoke` ejecuta el `kubectl` **dentro de Azure** vía ARM, que el proxy sí deja pasar; no necesita kubeconfig. Regla de trabajo: ofrecer siempre el comando `az` antes que el local.
+- **Más aprendizajes del día:**
+  - *`apply` frente a comandos imperativos:* `kubectl apply` solo quita los campos que él mismo aplicó (`last-applied`); lo que se puso con `set env` o `patch` no lo toca (`unchanged`). Al volver a la plantilla original, Kubernetes reutiliza el ReplicaSet antiguo (mismo `pod-template-hash`). Durante un rolling update fallido el pod viejo sigue sirviendo.
+  - *Subir y bajar son permisos distintos:* `az acr build` lo autoriza tu login (el push lo hace ACR en la nube); la descarga la hace el kubelet con el rol **AcrPull** (`--attach-acr`). En producción `--admin-enabled false`, CI con identidad federada y `AcrPush` mínimo.
+  - *Diagnóstico de las tres averías:* pod `Running` + Service sin endpoints = selector ≠ etiquetas; `CrashLoopBackOff` = `logs` (por qué muere) y luego `describe` (`Exit Code`, `Back-off`); readiness = `RESTARTS 0`, `0/1`, evento `Unhealthy` (404) y `conditions.ready`.
+  - *Cleanup:* las credenciales del lab caducan por tiempo; hay que borrar **al terminar el lab**, antes de documentar. Los labs 7 y 8 quedaron «no verificado» (entorno temporal del curso).
+- **Analogía K8s:** `az aks command invoke` = ejecutar `kubectl` desde un Job dentro del cluster; AcrPull al kubelet = `imagePullSecret` sin secreto; ConfigMap/Secret/PVC son los mismos objetos de siempre, lo nuevo es `managed-csi` (Azure Disk) y el LoadBalancer de Azure.
+- **Comando / código:**
+  ```bash
+  # kubectl dentro de Azure, con ficheros locales (sin kubeconfig ni port-forward)
+  az aks command invoke -g <rg> -n <aks> \
+    --command "kubectl apply -f deployment.yaml -n <ns>; kubectl rollout status deploy/<d> -n <ns>" \
+    --file k8s/deployment.yaml
+  # probar un Service ClusterIP desde dentro del pod
+  az aks command invoke -g <rg> -n <aks> --command "kubectl exec deploy/<d> -n <ns> -- python -c \"import urllib.request;print(urllib.request.urlopen('http://<svc>/healthz').read().decode())\""
+  ```
+- **Error típico:**
+  - `x509: certificate signed by unknown authority` al hacer `kubectl apply` → el proxy re-firma el TLS y `kubectl` solo confía en la CA del cluster → usar `az aks command invoke`.
+  - `apply … unchanged` y la avería no se produce → la variable la puso `set env` y el `apply` no la quita → `kubectl set env <d> VAR-`.
+  - Diagnóstico a los 8 s sin `CrashLoopBackOff` → el pod nuevo aún no ha fallado y `-l app=api` mezcla el viejo → esperar 60 s y mirar el pod más reciente.
+- **Repaso:** un Service existe, su pod está `1/1 Running` y `kubectl get endpointslices` no muestra endpoints. ¿Qué compruebas primero?
+  A. Los `logs` del pod · B. El `Selector` del Service frente a las etiquetas del pod · C. Los límites de CPU · D. El rol AcrPull del kubelet → **B**.
+
 ## 2026-10-29 · Container Apps: escalado por concurrencia, revisiones y limpieza
 - **Aprendizaje:** el escalado de ACA (KEDA por debajo) con la regla `http-scaling` se decide por **peticiones concurrentes por réplica** (aquí 10), no por peticiones por segundo. Con 25 workers y `delayMs 500` las réplicas subieron 1 → 3 → 5 con 0 peticiones fallidas; sin `delayMs` las peticiones no se solapan y no escala.
 - **Más aprendizajes del día:**
