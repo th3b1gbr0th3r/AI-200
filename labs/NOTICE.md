@@ -5,3 +5,5 @@ Los ficheros de partida de los labs (`azdeploy.py`, carpeta `api/`, `document.tx
 Texto de la licencia: https://github.com/MicrosoftLearning/mslearn-azure-ai/blob/main/LICENSE
 
 Se incluyen también los zips originales del lab. No se versionan los `.env` generados por los scripts ni los zips duplicados del curso. Las presentaciones y knowledge check del curso (públicos) viven en `docs/`.
+
+`labs/lp3-01-aks-deploy/aks-deploy-python-plataforma.zip` es la variante del mismo starter que distribuye la plataforma de laboratorios del curso (misma procedencia MicrosoftLearning/mslearn-azure-ai, con cuatro valores de configuración añadidos al principio de `azdeploy.py`); se conserva sin editar para poder reproducir el lab.
