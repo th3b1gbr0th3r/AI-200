@@ -42,6 +42,9 @@ Cuando la salida de un comando no es fiable (la CLI oculta valores, el script se
 ## Salidas reales de cada lab (OBLIGATORIO)
 Regla del usuario (29/10/2026): las salidas de comandos que el alumno pega se guardan en `labs/<lab>/salidas.md` para que los labs se lean de forma visual: un bloque `console` por comando, con la salida **real**, y debajo «Qué mirar». Se sanean antes de subir (sin IDs de suscripción, tenant, workspace o principal, sin usuario/TAP del lab, sin listas largas como las IPs de salida, con los sufijos hash como `<hash>`). Se enlazan desde el README del lab. Si una salida muestra un error, se guarda como incidencia con su arreglo.
 
+## Variables de entorno (MÁXIMA)
+Regla del usuario (03/11/2026): el repo corre en un **PC de empresa** y su entorno puede contener variables sensibles. **Nunca ver variables de entorno sin avisar** y esperar confirmación: nada de `env`, `printenv`, `export -p`, `set`, `declare -p`, `cat /proc/*/environ`, ni `echo $VAR` de una variable no acordada. Para comprobar una variable concreta, verifica que existe sin mostrar su valor (`[ -n "${VAR:-}" ] && echo definida`). Las que pide el curso (p. ej. `REQUESTS_CA_BUNDLE`) sí se pueden mostrar. Si un comando o script del lab puede volcar el entorno (p. ej. `az` con `--debug`), avisa antes. Nunca guardes valores de entorno en el repo ni en las salidas de los labs.
+
 ## Destrucción de recursos (OBLIGATORIO)
 Regla del usuario (29/10/2026): **todo lo creado en el curso se destruye al final.** No es opcional ni se da por hecho que la plataforma lo haga.
 - **Al terminar cada lab:** antes de pasar al siguiente, dar los comandos de limpieza y comprobar que se ejecutaron:
