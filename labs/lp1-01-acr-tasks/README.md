@@ -229,3 +229,14 @@ Tras el bloqueo: `writeEnabled: false`, `deleteEnabled: true`.
 | `az account show` sin sesión | Login hecho con cuenta personal | Repetir con la cuenta del lab |
 | `python3: can't open file azdeploy.py` | Se ejecutó desde la carpeta equivocada | `cd labs/lp1-01-acr-tasks` |
 | Región | El lab exige `eastus` (la plataforma lo indica) | `location = "eastus"` |
+
+## Cómo `azdeploy.py` crea el ACR y lo vincula
+Explicación general (piezas del script, push frente a pull, comprobaciones): [`../acr-en-azdeploy.md`](../acr-en-azdeploy.md). En este lab, según el código de su `azdeploy.py`:
+| Paso | Comando `az` | Detalle en este script |
+|---|---|---|
+| Crear el ACR | `az acr create` (ACR (línea 144)) | `--sku Basic` y **sin** `--admin-enabled` (admin desactivado por defecto) |
+| Subir la imagen | `az acr build` | No lo hace el script: el build lo lanza el alumno con `az acr build` (ACR Tasks), que es el objetivo del lab |
+| Vincular (pull) | ver fila siguiente | Ninguna: este lab solo crea y usa el registro; no hay servicio que descargue la imagen |
+- **Push y pull son permisos distintos:** el build lo hace ACR en la nube con tu `az login`; la descarga la hace el servicio con una identidad y el rol **AcrPull**.
+- **Comprobar el vínculo (solo lectura):** `az acr repository list -n <acr> -o tsv` y `az acr manifest list-metadata …`.
+- **Si el servicio no descarga la imagen** (`ImagePullBackOff`): falta AcrPull o la imagen/tag no existe → `az acr repository show-tags -n <acr> --repository <imagen> -o tsv` y la lista de roles de arriba.

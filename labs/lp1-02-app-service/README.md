@@ -288,6 +288,17 @@ az acr task list-runs --registry $ACR_NAME -o table                             
 - Experimento opcional (reiniciar la app y comprobar que `/documents` conserva el documento): no realizado.
 - Cleanup: la plataforma de labs desprovisiona los recursos al finalizar el laboratorio (según el docente); además se puede borrar a mano con el comando del paso 16. El 29/10 `rg-ai200-appsvc` ya no existía: la plataforma lo desprovisionó.
 
+## Cómo `azdeploy.py` crea el ACR y lo vincula
+Explicación general (piezas del script, push frente a pull, comprobaciones): [`../acr-en-azdeploy.md`](../acr-en-azdeploy.md). En este lab, según el código de su `azdeploy.py`:
+| Paso | Comando `az` | Detalle en este script |
+|---|---|---|
+| Crear el ACR | `az acr create` (L176) | `--sku Basic`, `--admin-enabled false` |
+| Subir la imagen | `az acr build` | `az acr build` (L196) con la imagen de la API |
+| Vincular (pull) | ver fila siguiente | App Service con identidad system-assigned (`az webapp identity assign`) + rol **AcrPull** sobre el ACR; el script crea el plan y la web app, y la vinculación se hace en los pasos del lab (la web app arranca sin poder hacer pull) |
+- **Push y pull son permisos distintos:** el build lo hace ACR en la nube con tu `az login`; la descarga la hace el servicio con una identidad y el rol **AcrPull**.
+- **Comprobar el vínculo (solo lectura):** `az webapp show -g <rg> -n <app> --query identity.principalId -o tsv` (no vacío tras asignar la identidad).
+- **Si el servicio no descarga la imagen** (`ImagePullBackOff`): falta AcrPull o la imagen/tag no existe → `az acr repository show-tags -n <acr> --repository <imagen> -o tsv` y la lista de roles de arriba.
+
 ## Cleanup y troubleshooting (de la guía de la plataforma)
 
 **Cleanup.** Borra el resource group y todo lo que contiene (ACR, plan, web app, asignación de rol). Se ejecuta en segundo plano:

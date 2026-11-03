@@ -234,6 +234,17 @@ az containerapp logs show              → últimas líneas de la consola de la 
 | Comandos pegados con `!` no hacen nada | En bash normal `!` niega el estado y el `&&` se salta el siguiente comando | No usar `!` fuera del prompt de Claude Code |
 | `az extension list` vacío aunque se «instalaron» | Misma causa: nunca se ejecutaron | Repetir sin `!` |
 
+## Cómo `azdeploy.py` crea el ACR y lo vincula
+Explicación general (piezas del script, push frente a pull, comprobaciones): [`../acr-en-azdeploy.md`](../acr-en-azdeploy.md). En este lab, según el código de su `azdeploy.py`:
+| Paso | Comando `az` | Detalle en este script |
+|---|---|---|
+| Crear el ACR | `az acr create` (L152) | `--sku Basic`, `--admin-enabled false` |
+| Subir la imagen | `az acr build` | `az acr build` (L169) |
+| Vincular (pull) | ver fila siguiente | `az containerapp create … --registry-server <acr>.azurecr.io --registry-identity system` (lo lanza el alumno): identidad system-assigned y AcrPull automático |
+- **Push y pull son permisos distintos:** el build lo hace ACR en la nube con tu `az login`; la descarga la hace el servicio con una identidad y el rol **AcrPull**.
+- **Comprobar el vínculo (solo lectura):** `az containerapp show -g <rg> -n ai-api --query identity.type -o tsv` (`SystemAssigned`).
+- **Si el servicio no descarga la imagen** (`ImagePullBackOff`): falta AcrPull o la imagen/tag no existe → `az acr repository show-tags -n <acr> --repository <imagen> -o tsv` y la lista de roles de arriba.
+
 ## Cleanup (lo ejecuta el alumno)
 ```bash
 export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt

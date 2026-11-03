@@ -193,6 +193,17 @@ az aks command invoke -g <rg> -n <aks> --command "kubectl apply -f deployment.ya
 - **Estado:** curl verificado (HTTP 200 en ambos); opciones 1-4 del cliente confirmadas por el alumno; salida literal guardada de la 4.
 - **Concepto:** la API arma la lista de mensajes (roles `system`/`user`/`assistant`) y llama a `gpt-5.1` con `DefaultAzureCredential`; el cliente solo habla HTTP con la API.
 
+## Cómo `azdeploy.py` crea el ACR y lo vincula
+Explicación general (piezas del script, push frente a pull, comprobaciones): [`../acr-en-azdeploy.md`](../acr-en-azdeploy.md). En este lab, según el código de su `azdeploy.py`:
+| Paso | Comando `az` | Detalle en este script |
+|---|---|---|
+| Crear el ACR | `az acr create` (L199) | `--sku Basic`, `--admin-enabled true` (no se usa: el pull es por identidad) |
+| Subir la imagen | `az acr build` | `az acr build` (L226) con `aks-api:latest` |
+| Vincular (pull) | ver fila siguiente | `az aks create … --attach-acr` (L290): AcrPull al kubelet. Aparte, `az role assignment create` (L399) da *Cognitive Services OpenAI User* sobre Foundry: no es del ACR |
+- **Push y pull son permisos distintos:** el build lo hace ACR en la nube con tu `az login`; la descarga la hace el servicio con una identidad y el rol **AcrPull**.
+- **Comprobar el vínculo (solo lectura):** `az role assignment list --scope <id-ACR> --query "[?roleDefinitionName=='AcrPull']" -o table` (una fila `ServicePrincipal`).
+- **Si el servicio no descarga la imagen** (`ImagePullBackOff`): falta AcrPull o la imagen/tag no existe → `az acr repository show-tags -n <acr> --repository <imagen> -o tsv` y la lista de roles de arriba.
+
 ## Cleanup (por recursos: el grupo es de la plataforma)
 > **No ejecutar `az group delete`** de la guía: el starter de la plataforma usa un grupo **ya existente** (`ResourceMoverRG-…`) que contiene también el Foundry y recursos de la plataforma. Se borra solo lo que creamos nosotros.
 

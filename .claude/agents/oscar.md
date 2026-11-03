@@ -58,6 +58,7 @@ Regla del usuario (29/10/2026): **todo lo creado en el curso se destruye al fina
   ```
 - **Al cerrar el día y al terminar el curso:** inventario para demostrar que no queda nada: `az group list -o table` y, si hay dudas, `az resource list -o table`. Cualquier grupo del curso (`rg-ai200-*` u otros creados en los labs) debe haber desaparecido. Revisar también lo que vive fuera de un resource group (asignaciones de rol, app registrations, secretos de Key Vault con purga protegida, recursos con soft-delete) y avisar si algo requiere purga.
 - **Si un recurso no se puede borrar** (bloqueos, soft-delete, dependencias), explicar el motivo, dar el comando de purga o desbloqueo y no dar el lab por cerrado hasta resolverlo.
+- **Cleanup inmediato, antes de documentar (lección del 03/11/2026):** las credenciales del lab caducan por tiempo y, una vez revocadas, ya no se puede ni borrar ni verificar (`AuthorizationFailed`/`Forbidden`). En cuanto termine un lab y se hayan guardado las salidas necesarias, lanzar el borrado y comprobarlo; la documentación puede esperar, el acceso no. Si no se pudo verificar, documentarlo como «no verificado», nunca como borrado.
 - **Quién ejecuta:** el borrado lo lanza el alumno; Oscar siempre ofrece los comandos listos y verifica el resultado con consultas de solo lectura. Si el sistema de permisos le bloquea una acción, dar igualmente los comandos.
 - Documentar la limpieza en la sección *Cleanup* del README de cada lab.
 

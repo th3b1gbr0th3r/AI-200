@@ -102,6 +102,17 @@ Según la guía: `az containerapp show … --output yaml > app-config.yaml`, aju
 | `argument --name/-n: expected one argument` | `$CONTAINER_APP_NAME` vacía: el `.env` no estaba cargado en esa terminal | `source .env` y comprobar con `echo "RG=[$RESOURCE_GROUP] APP=[$CONTAINER_APP_NAME]"` |
 | `The behavior of this command has been altered by the following extension: containerapp` | Aviso de la extensión preview | Se ignora |
 
+## Cómo `azdeploy.py` crea el ACR y lo vincula
+Explicación general (piezas del script, push frente a pull, comprobaciones): [`../acr-en-azdeploy.md`](../acr-en-azdeploy.md). En este lab, según el código de su `azdeploy.py`:
+| Paso | Comando `az` | Detalle en este script |
+|---|---|---|
+| Crear el ACR | `az acr create` (L149) | `--sku Basic`, `--admin-enabled false` |
+| Subir la imagen | `az acr build` | `az acr build` (L166) |
+| Vincular (pull) | ver fila siguiente | `--registry-identity system` (L256) y además `az role assignment create` (L292) que garantiza AcrPull a la identidad de la app |
+- **Push y pull son permisos distintos:** el build lo hace ACR en la nube con tu `az login`; la descarga la hace el servicio con una identidad y el rol **AcrPull**.
+- **Comprobar el vínculo (solo lectura):** `az role assignment list --scope <id-ACR> --query "[?roleDefinitionName=='AcrPull']" -o table` (una fila).
+- **Si el servicio no descarga la imagen** (`ImagePullBackOff`): falta AcrPull o la imagen/tag no existe → `az acr repository show-tags -n <acr> --repository <imagen> -o tsv` y la lista de roles de arriba.
+
 ## Cleanup (obligatorio, lo ejecuta el alumno)
 ```bash
 export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
