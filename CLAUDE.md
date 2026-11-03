@@ -21,4 +21,4 @@ Cada sesión de clase/trabajo se guarda en `sesiones/AAAA-MM-DD-<tema>.md` (deci
 Los labs son un SaaS con credenciales temporales; si el alumno se atasca se puede guiar en la plataforma o reproducir el lab en local (ver `.claude/agents/oscar.md`).
 
 ## Flujo de PRs
-Una rama y una PR por día de curso (`dia-NN-AAAA-MM-DD` → `main`), con la plantilla de `.github/`. Nunca hacer push directo a `main` desde el día 2. El merge lo hace el usuario. Skill: `/aprender`.
+Una rama y una PR por día de curso (`dia-NN-AAAA-MM-DD` → `main`), con la plantilla de `.github/`. Nunca hacer push directo a `main` desde el día 2. El merge lo hace el usuario. Skills: `/aprender` (cierre de día) y `/quiz-lab` (repaso de labs con menú y evaluación).
