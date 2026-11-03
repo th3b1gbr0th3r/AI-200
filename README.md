@@ -12,9 +12,10 @@ Documentación, notas y laboratorios del curso **AI-200: Developing** (Microsoft
 | `.claude/agents/` | Agente `oscar` de apoyo Azure + DevOps |
 | `sesiones/` | Registro de cada sesión de trabajo |
 | `docs/aprendizajes.md` | Un aprendizaje por día (skill `/aprender`) |
+| `docs/tests/` | Knowledge checks y resultados de quizzes (skill `/quiz-lab`) |
 
 ## Usar el repo con Claude Code
-El repo está preparado para trabajar con [Claude Code](https://claude.com/claude-code). Al abrirlo (`claude` en la raíz) carga automáticamente `CLAUDE.md` y el agente y la skill de abajo.
+El repo está preparado para trabajar con [Claude Code](https://claude.com/claude-code). Al abrirlo (`claude` en la raíz) carga automáticamente `CLAUDE.md` y el agente y las skills de abajo.
 
 ### Agente `oscar`
 Especialista en Azure con enfoque DevOps, pensado para un perfil SysOps/Kubernetes que aprende la parte de desarrollo. Definido en `.claude/agents/oscar.md`.
@@ -29,6 +30,15 @@ Definida en `.claude/skills/aprender/SKILL.md`. Se ejecuta escribiendo `/aprende
 3. Actualiza la nota de la sesión en `sesiones/`.
 4. Comprueba que no hay secretos ni datos personales (el repo es público).
 5. Crea la rama `dia-NN-AAAA-MM-DD` y abre una PR contra `main`. El merge lo haces tú.
+
+### Skill `/quiz-lab` — repaso de labs con menú
+Definida en `.claude/skills/quiz-lab/SKILL.md`. Se ejecuta escribiendo `/quiz-lab` en Claude Code:
+1. Muestra un menú con **todos los labs documentados** en `labs/` (se descubren solos al añadir uno nuevo): primero el learning path (LP1, LP2, LP3 o mezcla) y luego el lab.
+2. Eliges el nivel: repaso (5 preguntas), examen (10) o solo errores y troubleshooting.
+3. Hace las preguntas **una a una** en formato test, sacadas solo de lo documentado (README, `salidas.md`, notas del módulo y knowledge checks).
+4. Evalúa cada respuesta al momento: correcta o no, por qué, qué falla en el distractor elegido y en qué paso del lab se practicó.
+5. Termina con la nota, los puntos débiles y qué repasar; ofrece guardar el resultado en `docs/tests/` o llevar un fallo a `/aprender`.
+Es de solo lectura: no ejecuta `az` ni crea recursos.
 
 ### Flujo de trabajo
 Una rama y una PR por día de curso, con la plantilla de `.github/pull_request_template.md`. Sin push directo a `main`.
