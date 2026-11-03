@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: acrdf2d02f3.azurecr.io/aks-troubleshoot-api:latest
+        image: <YOUR_ACR_ENDPOINT>/aks-troubleshoot-api:latest
         imagePullPolicy: Always
         ports:
         - name: http

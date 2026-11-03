@@ -27,6 +27,9 @@ Cada lab trae los ficheros de partida de Microsoft (`azdeploy.py`, `api/`, `docu
 - Antes de ejecutar en una suscripción de empresa: revisar región, políticas de nombres y de red, y **limpiar** con `az group delete --name <rg> --no-wait --yes` (lo lanza quien despliega).
 - La imagen de ejemplo se construye en la nube con ACR Tasks: no hace falta Docker local.
 
+## Cómo crean y vinculan el ACR los scripts
+Explicación común (qué hace `az acr create`, `az acr build` y la vinculación por identidad, con las comprobaciones): [`acr-en-azdeploy.md`](acr-en-azdeploy.md). Cada README de lab añade los datos de su propio script.
+
 ## Labs siguientes
 Los labs 7 y 8 de LP3 (AKS) y los demás de LP2 (ACA) se incorporarán a esta tabla al hacerlos.
 

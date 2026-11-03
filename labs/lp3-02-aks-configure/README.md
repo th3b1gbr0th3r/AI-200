@@ -3,7 +3,7 @@
 Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-kubernetes-service/02-aks-configure-container.html
 Ejecutar con `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` en cada terminal. Origen MIT: ver [`../NOTICE.md`](../NOTICE.md). Notas de clase: [`docs/modulos/03-aks.md`](../../docs/modulos/03-aks.md). **Salidas reales saneadas: [`salidas.md`](salidas.md).**
 
-**Estado:** completado el 03/11/2026 (despliegue y API verificados; cleanup pendiente de lanzar al cierre de este documento).
+**Estado:** completado el 03/11/2026 (despliegue y API verificados). **Cleanup: no verificado**, ver abajo.
 
 ## Objetivo
 Configurar la API en AKS con un **ConfigMap** (valores no sensibles), un **Secret** (credenciales) y un **PVC** (disco de Azure `managed-csi` para los logs), y comprobar que llegan al pod. El almacenamiento persistente es solo de demostración.
@@ -81,6 +81,17 @@ az aks command invoke -g <rg> -n <aks> --command "kubectl apply --dry-run=server
 - Cliente: `client/.env` con `API_ENDPOINT=http://<ip>`, `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && python main.py` (opciones 1-6).
 - Tras cambiar ConfigMap o Secret: reaplicar y `kubectl rollout restart deployment aks-config-api` (también con `az aks command invoke`).
 
+## Cómo `azdeploy.py` crea el ACR y lo vincula
+Explicación general (piezas del script, push frente a pull, comprobaciones): [`../acr-en-azdeploy.md`](../acr-en-azdeploy.md). En este lab, según el código de su `azdeploy.py`:
+| Paso | Comando `az` | Detalle en este script |
+|---|---|---|
+| Crear el ACR | `az acr create` (L154) | `--sku Basic`, `--admin-enabled true` (no se usa) |
+| Subir la imagen | `az acr build` | `az acr build` (L182) con `aks-config-api:latest` |
+| Vincular (pull) | ver fila siguiente | `az aks create … --attach-acr` (L246): AcrPull al kubelet; `az role assignment create` (L276) da el rol de almacenamiento sobre el grupo de nodos |
+- **Push y pull son permisos distintos:** el build lo hace ACR en la nube con tu `az login`; la descarga la hace el servicio con una identidad y el rol **AcrPull**.
+- **Comprobar el vínculo (solo lectura):** `az role assignment list --scope <id-ACR> --query "[?roleDefinitionName=='AcrPull']" -o table` (una fila).
+- **Si el servicio no descarga la imagen** (`ImagePullBackOff`): falta AcrPull o la imagen/tag no existe → `az acr repository show-tags -n <acr> --repository <imagen> -o tsv` y la lista de roles de arriba.
+
 ## Cleanup
 El grupo `rg-ai200-aks-cfg` es **nuestro** (lo creó el script), así que aquí sí se borra entero. Antes de lanzarlo, comprobar que es ese y no un grupo de la plataforma:
 ```bash
@@ -96,3 +107,6 @@ El borrado arrastra el AKS, el ACR, el disco del PVC y el grupo `MC_…`. Si hub
 - ConfigMap → variables no sensibles con `envFrom`; Secret → `secretKeyRef` por clave; PVC `managed-csi` → disco de Azure `RWO` que se enlaza (`Bound`) al arrancar el pod.
 - `--dry-run=server` es la comprobación previa más barata.
 - Anticipar el proxy: en estos labs se trabaja con `az aks command invoke` y sin kubeconfig.
+
+### Resultado real del cleanup (03/11/2026)
+No se llegó a verificar el borrado de `rg-ai200-aks-cfg`: al intentar leerlo desde la sesión siguiente, la suscripción de este lab respondía `Forbidden` (credenciales revocadas por la plataforma). Se desconoce si el alumno llegó a lanzar el `az group delete` antes del cambio de credenciales. Mismo criterio que el lab 8: lanzar el cleanup nada más terminar.
