@@ -1,0 +1,7 @@
+$env:RESOURCE_GROUP = "rg-ai200-aca-scale"
+$env:ACA_ENVIRONMENT = "aca-env-964ff64b"
+$env:CONTAINER_APP_NAME = "agent-api"
+$env:CONTAINER_APP_FQDN = "agent-api.proudfield-52972335.eastus.azurecontainerapps.io"
+$env:CONTAINER_APP_URL = "https://agent-api.proudfield-52972335.eastus.azurecontainerapps.io"
+$env:CONTAINER_IMAGE = "agent-api:v1"
+$env:LOCATION = "eastus"
