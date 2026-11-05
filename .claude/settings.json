@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p labs/*)",
+      "Bash(mkdir -p sesiones)",
+      "Bash(mkdir -p tmp)",
+      "Bash(mkdir -p tmp/*)"
+    ]
+  }
+}

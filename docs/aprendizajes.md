@@ -2,6 +2,36 @@
 
 Un aprendizaje por día, recogido con la skill `/aprender`. Más reciente arriba.
 
+## 2026-11-05 · Cosmos DB for NoSQL: el coste se mide en RU y lo decide la forma de la consulta y del índice
+- **Aprendizaje:** en Cosmos DB todo se paga en **RU** y depende de cómo preguntas y de cómo indexas. Una lectura puntual (`id` + partition key) cuesta ≈ 1 RU; una query con partition key va a una partición; una query por otro campo (p. ej. `category`) es **cross-partition** (fan-out) aunque los datos estén en un solo documento. En vectores, `diskANN` es el más caro de **escribir** (≈ 55 RU/doc, ≈ 4,7× `flat` con ≈ 11,7) y a 500 vectores `flat` gana leyendo (10,13 RU frente a 21,60); DiskANN compensa a escala (≈ 95 % de recall). Filtrar por categoría antes del ranking bajó la lectura a 8,15 RU en los tres índices.
+- **Más aprendizajes del día:**
+  - *Dos planos de permisos:* `Contributor` (ARM) gestiona la cuenta, BD y contenedores; `Cosmos DB Built-in Data Contributor` (RBAC propio de Cosmos) lee y escribe documentos. Un rol de ARM, ni siquiera Owner, basta para leer datos con `DefaultAzureCredential`.
+  - *Política vectorial:* la *vector embedding policy* (ruta, tipo, dimensiones, distancia) es **inmutable** tras crear el contenedor; el *vector index* sí se puede cambiar. `/embedding/*` se excluye del índice normal. Con `cosine`, la puntuación más alta es la más parecida. La calidad semántica la da el modelo de embeddings, no Cosmos.
+  - *Plataforma de labs:* cada lab trajo **otra suscripción** (`XLabs-278`, `-274`, `-232`); desde otra suscripción `az group exists` devuelve `false` aunque el grupo siga vivo en la anterior. Hay que verificar el cleanup **antes** de abrir la sesión siguiente; los de los labs 9 y 10 quedaron como «borrado lanzado, no verificado».
+- **Analogía K8s:** partition key = shard key (como dar namespace y nombre exactos a `kubectl get`); RU = requests/limits cobrados por operación; los dos roles = crear un `Deployment` frente a hacer `exec` en el pod; `DefaultAzureCredential` = el mismo código con tu `az login` en el PC y con Workload Identity en AKS.
+- **Comando / código:**
+  ```python
+  # lectura puntual: la operación más barata (≈ 1 RU)
+  item = container.read_item(item=chunk_id, partition_key=document_id)
+  # búsqueda vectorial: TOP obligatorio; con cosine, mayor puntuación = más parecido
+  container.query_items(
+      query="SELECT TOP @n c.id, VectorDistance(c.embedding, @v) AS s FROM c ORDER BY VectorDistance(c.embedding, @v)",
+      parameters=[{"name": "@n", "value": 5}, {"name": "@v", "value": vector}],
+      enable_cross_partition_query=True)
+  ```
+  ```bash
+  # comprobar la política vectorial de un contenedor (solo lectura)
+  az cosmosdb sql container show -g <rg> -a <cuenta> -d <bd> -n <contenedor> \
+    --query "{vec:resource.vectorEmbeddingPolicy, idx:resource.indexingPolicy.vectorIndexes}"
+  ```
+- **Error típico:**
+  - `az group exists` da `false` para el lab anterior → la sesión nueva es **otra suscripción**, no que se haya borrado → verificar el cleanup antes de cambiar de sesión.
+  - `bash: .env: No existe el archivo` → no se lanzó la opción de «Retrieve connection info» del menú → lanzarla y luego `source .env`.
+  - `REQUESTS_CA_BUNDLE environment variable is specified with an invalid file path` → la ruta no existe (aquí un typo `.crtrt`) → repetir el `export` con `/etc/ssl/certs/ca-certificates.crt`.
+- **Repaso:** ¿Qué operación de lectura de Cosmos DB es la más barata y qué necesita?
+  A) Una query con `ORDER BY` · B) Una lectura puntual con `id` y partition key · C) Una query cross-partition · D) Un `SELECT *`.
+  *Respuesta: B.*
+
 ## 2026-11-03 · AKS en un PC con proxy: `az aks command invoke`, apply vs imperativo y AcrPull
 - **Aprendizaje:** el proxy de empresa re-firma el TLS y **bloquea el API server de AKS** (`x509` y luego `502 IncompleteCertChain`), así que `kubectl` local no llega al cluster. `az aks command invoke` ejecuta el `kubectl` **dentro de Azure** vía ARM, que el proxy sí deja pasar; no necesita kubeconfig. Regla de trabajo: ofrecer siempre el comando `az` antes que el local.
 - **Más aprendizajes del día:**
