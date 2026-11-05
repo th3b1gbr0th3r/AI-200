@@ -10,13 +10,13 @@ Objetivo: que el alumno compruebe que **entiende** cada lab (no solo que lo ejec
 ## 1. Menú de labs (dinámico)
 1. Descubre los labs documentados: `ls labs/*/README.md`. Un lab cuenta si tiene README. Marca con «con salidas» los que tienen `salidas.md` y con «sin ejecutar» los que su README diga *preparado, no ejecutado* (el quiz de estos usa solo la guía y el README).
 2. Muestra el menú con `AskUserQuestion` (máx. 4 opciones por pregunta, así que en dos pasos):
-   - **Paso 1 · Learning path:** LP1 (ACR + App Service), LP2 (Container Apps), LP3 (AKS) y «Mezcla de todos».
-   - **Paso 2 · Lab:** los labs de ese LP (más «Todos los de este LP»). Etiqueta = código + título corto (p. ej. `LP2-03 · Scale en ACA`); descripción = estado y si tiene salidas.
-   Si se añaden labs nuevos a `labs/`, aparecen solos: no hay lista fija.
+   - **Paso 1 · Learning path:** deduce los LP de los prefijos de `labs/` (`lpN-…`) y de los ficheros `docs/LPN - Knowledge check.pdf` / `docs/AI-200T00A-0N_*.pdf`. Hoy: LP1 (ACR + App Service), LP2 (Container Apps), LP3 (AKS), LP4 (Cosmos DB for NoSQL). Máx. 4 opciones: muestra los **3 LP más recientes** y una cuarta «Otros LP / Mezcla de todos», que abre una segunda pregunta con el resto de LP y «Mezcla de todos».
+   - **Paso 2 · Lab:** los labs de ese LP (más «Todos los de este LP»). Etiqueta = código + título corto (p. ej. `LP2-03 · Scale en ACA`); descripción = estado y si tiene salidas. Si el LP **no tiene labs en `labs/`** (p. ej. un LP nuevo antes de hacer sus labs; LP4 ya tiene `lp4-01-cosmos-queries`, `lp4-02-cosmos-vector-search` y `lp4-03-cosmos-optimize`), ofrece «Teoría + knowledge check del LP» y avisa de que el quiz sale solo del PDF del módulo y del knowledge check.
+   Si se añaden labs o LP nuevos, aparecen solos: no hay lista fija.
 3. Pregunta también el **nivel** con `AskUserQuestion`: *Repaso (5 preguntas)* · *Examen (10 preguntas)* · *Solo errores y troubleshooting*.
 
 ## 2. Preparar las preguntas
-Lee, del lab elegido: `README.md`, `salidas.md` (si existe), la nota del módulo (`docs/modulos/NN-*.md`) y, si la hay, el knowledge check (`docs/tests/`). **Las preguntas salen solo de lo documentado**: nada inventado. Mezcla estos tipos:
+Lee, del lab elegido: `README.md`, `salidas.md` (si existe), la nota del módulo (`docs/modulos/NN-*.md`) y, si la hay, el knowledge check (`docs/tests/`). Si el LP no tiene nota de módulo, usa el PDF del módulo (`docs/AI-200T00A-0N_*.pdf`) y `docs/LPN - Knowledge check.pdf`: léelos con `pdftotext "<pdf>" -` (solo lectura; si necesitas un temporal, usa `tmp/` en la raíz del repo, nunca fuera). Los PDF son material del curso: no copies preguntas literales del knowledge check; reformúlalas como escenario. **Las preguntas salen solo de lo documentado**: nada inventado. Mezcla estos tipos:
 | Tipo | Ejemplo de enfoque |
 |---|---|
 | Concepto | por qué identidad gestionada y no credenciales de ACR |
@@ -24,7 +24,8 @@ Lee, del lab elegido: `README.md`, `salidas.md` (si existe), la nota del módulo
 | Lectura de salida | dada una salida de `salidas.md`, qué indica |
 | Troubleshooting | síntoma → causa → arreglo (incidencias reales del lab) |
 | Analogía K8s | qué objeto de Kubernetes equivale |
-| Cleanup | qué comando borra y cómo se verifica |
+| Cleanup | qué comando borra y cómo se verifica (y por qué `az group exists` = `false` no vale si la sesión es otra suscripción) |
+| Diseño de datos (LP4) | clave de partición, RU/s, consistencia, índices vectoriales vs. coste de la consulta |
 
 Reglas de las preguntas: formato examen MS (enunciado de escenario, 3-4 opciones, una correcta), distractores plausibles, sin pistas por longitud ni posición (varía la letra correcta), y sin IDs, claves ni datos personales. Si el lab no tiene material suficiente para N preguntas, hazlas menos y dilo.
 

@@ -26,3 +26,6 @@ __pycache__/
 # Exportaciones de configuración de apps (llevan IDs, principal e IPs)
 app-config.yaml
 *-config.yaml
+
+# Temporales de trabajo (nunca salir del repo)
+tmp/
