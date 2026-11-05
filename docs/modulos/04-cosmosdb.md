@@ -62,19 +62,53 @@ Puntos de examen:
 Conclusiones:
 1. **`diskANN` es el más caro de escribir** (≈ 4,7×): cada vector se enlaza en un grafo de vecinos. Coincide con el lab 10 (≈ 53 RU por ticket con DiskANN frente a ≈ 55 aquí).
 2. **A esta escala `flat` gana en lectura** (la mitad de RU): recorrer 500 vectores es barato y no hay nada que acelerar. `diskANN` compensa con muchos vectores.
-3. **`quantizedFlat` y `diskANN` costaron exactamente lo mismo** (21,60). Hipótesis **no verificada** en esta sesión: con pocos vectores no tienen aún un grafo útil y ambos recorren vectores comprimidos.
+3. **`quantizedFlat` y `diskANN` costaron exactamente lo mismo** (21,60). Explicación (diapositivas del curso): **necesitan 1.000 o más vectores para activarse; por debajo caen a un escaneo por fuerza bruta**. Con 500 vectores los dos hicieron lo mismo, y por eso `flat` (exacto, sin umbral) salió más barato.
 4. **Los tiempos no distinguen nada:** dependen de la latencia de red desde `mol-bastion` y del proxy, y es una sola ejecución.
 5. **Los resultados salieron idénticos.** La única diferencia (`doc-account-005` frente a `doc-account-100`) fue un **empate** de puntuación y texto (el generador repite plantillas), no pérdida de precisión.
 6. **Los datos de ese lab no tienen significado semántico** (un ticket de facturación salió el primero para una consulta de login): sirven para medir coste, no relevancia.
 
-**Con filtro** (`WHERE category = 'account'` + Top 5): los tres índices costaron **8,15 RU**, menos que sin filtro (`flat` 10,13 → 8,15; `quantizedFlat`/`diskANN` 21,60 → 8,15, un −62 %). Filtrar reduce los candidatos antes del ranking vectorial, y el resultado solo contiene la categoría pedida. Que los tres coincidan sugiere (hipótesis, no verificada) que con pocos documentos ninguno aprovecha su índice vectorial.
+**Con filtro** (`WHERE category = 'account'` + Top 5): los tres índices costaron **8,15 RU**, menos que sin filtro (`flat` 10,13 → 8,15; `quantizedFlat`/`diskANN` 21,60 → 8,15, un −62 %). Filtrar reduce los candidatos antes del ranking vectorial, y el resultado solo contiene la categoría pedida. Que los tres coincidan es coherente con el umbral: con menos de 1.000 vectores `quantizedFlat` y `diskANN` no se activan, y además el filtro deja aún menos candidatos.
 
-Guía de elección (de la guía oficial):
-| Escenario | Índice | Motivo |
+Guía de elección. **Presentación del curso** (la que cae en el test):
+| Índice | Mejor para | Dimensiones máx. |
 |---|---|---|
-| Menos de ~10.000 vectores | `flat` | exacto, coste aceptable |
-| Memoria limitada | `quantizedFlat` | menos memoria con buena precisión |
-| Producción a gran escala | `diskANN` | mejor eficiencia de RU, ≈ 95 % de recall |
+| `flat` | menos de 1.000 vectores, búsqueda exacta | 505 |
+| `quantizedFlat` | 1.000 a 50.000 vectores (comprimido) | 4.096 |
+| `diskANN` | más de 50.000 vectores (producción) | 4.096 |
+
+`quantizedFlat` y `diskANN` **necesitan 1.000+ vectores para activarse**; por debajo hacen un escaneo por fuerza bruta. La guía oficial del lab 11 da otra regla orientativa (menos de ~10.000 vectores: `flat`; memoria limitada: `quantizedFlat`; gran escala: `diskANN`, ≈ 95 % de recall). Para el examen, usa la tabla de la presentación.
+
+## Lo que añadió el docente en clase (05/11/2026)
+Contenido extraído de la sesión (sin transcripción literal):
+- **Jerarquía de Cosmos DB y analogía relacional:** cuenta (servidor/cluster) → base de datos → contenedor (≈ tabla; **no** es un contenedor Docker) → ítem (≈ fila, normalmente JSON). No hay relaciones explícitas entre contenedores: las define quien diseña.
+- **Cosmos DB es un «paraguas» de APIs** (NoSQL, MongoDB, Cassandra, Gremlin, Table); en el curso se usa **NoSQL**, el que se consulta con SQL. **No existe versión on-premises.** Es PaaS: no hay que gestionar VM, motor ni parches. Distribución global: eliges en cuántas regiones replicar (a más regiones, más coste).
+- **Partition key:** la decisión de diseño más crítica; se elige un campo de **alta cardinalidad** (usuario, identificador, categoría…). Con ella la query va a una partición (menos RU y latencia); sin ella hace fan-out a todas.
+- **Rendimiento (throughput):** manual (RU fijas) o **autoscale** (entre el 10 % y el 100 % del máximo). Lectura puntual ≈ 1 RU; una escritura puede costar de 5 a 10 RU o más según índices y consistencia.
+- **Patrón singleton del cliente:** reutilizar un único `CosmosClient` (pool de conexiones y caché).
+- **Consultas parametrizadas** frente a literales (más seguras y legibles).
+- **Cinco niveles de consistencia** (de más a menos consistente): Strong, Bounded staleness, **Session**, Consistent prefix, Eventual. Más consistencia = menos rendimiento. Strong y Bounded cuestan **2×** en RU de lectura; Session, Consistent prefix y Eventual **1×**. Para IA: **Session** (garantiza leer lo que escribiste en la sesión; pasar el *session token* de las escrituras a las lecturas); **Eventual** para analítica y procesos en segundo plano; **Strong** solo en casos financieros o regulatorios. Se define a nivel de cuenta (no se mezclan varios a la vez); un cliente por nivel si se necesitan distintos.
+- **Vectores y embeddings:** un embedding es un array numérico por documento (cada dimensión es una característica; `text-embedding-ada-002` usa 1.536). Se guarda **en el mismo documento** que los datos de negocio, sin base de datos aparte. Funciones de distancia: **cosine**, dot product y euclidean. Con cosine, 1 = idéntico y valores altos (≈ 0,7-0,9) = bastante similares. `TOP n` es obligatorio.
+- **Búsqueda híbrida con RRF:** `ORDER BY RANK RRF(VectorDistance(...), FullTextScore(...))` mezcla ranking semántico y por palabras clave; requiere política e índice de **full-text**. Útil para códigos de error (búsqueda literal). Un **pre-filtro** (`WHERE`, partition key) reduce el espacio de búsqueda.
+- **Refrescar embeddings:** al cambiar un documento hay que regenerar su vector (change feed); un hash del contenido evita regenerar si solo cambian metadatos; embeddings por lotes; procesos idempotentes; manejo de borrados; *dead-letter* para lo que no se pueda procesar (se verá con colas).
+- **Optimizar índices:** por defecto indexa **todas** las propiedades (buen punto de partida, caro al escalar). Política personalizada: incluir/excluir rutas, **índices compuestos** para filtro + ordenación, excluir los arrays de embeddings del índice de rango, no indexar textos muy largos. Cada índice compuesto sube el coste de escritura: cargas con muchas escrituras = pocos índices; cargas de lectura (la mayoría de apps de IA) = invertir en índices. Métricas a vigilar: índice utilizado, documentos recuperados frente a devueltos, y RU por query (`x-ms-request-charge`).
+- **Firewall integrado:** los servicios gestionados de base de datos filtran por defecto el tráfico de Internet. Si no conecta, permitir la IP pública de salida en *Networking*. En nuestros tres labs no hizo falta.
+- **Costes:** no dejar recursos desplegados (un día o una semana duele); si no da tiempo a un lab, desprovisionar y hacerlo otro día.
+
+## Test y examen (avisos del docente)
+- Las preguntas del examen salen de los tests de cada learning path, **con las mismas respuestas pero en otro orden**: no memorizar la letra, sino la respuesta correcta. En los tests hechos hasta ahora la **A** era correcta en la inmensa mayoría; en el examen no será así.
+- El test es de obligado cumplimiento para aprobar el curso. Se corrige en la clase siguiente.
+- **Próximo martes:** learning path de bases de datos **relacionales** con **PostgreSQL** en Azure (Azure SQL no entra). Los labs serán parecidos a los de Cosmos DB.
+- Nomenclatura Microsoft: los *learning paths* son lo que antes eran módulos, y los «módulos» actuales son las lecciones.
+
+## Corrección del test LP3 (AKS) en clase
+| Tema | Respuesta correcta | Por qué |
+|---|---|---|
+| Exponer una app a Internet | **Service LoadBalancer** (balanceador de carga de Azure) | El ClusterIP es una IP privada del cluster |
+| Que el tráfico llegue a los pods | Las **etiquetas del pod** de la plantilla deben coincidir con el **selector del Service** | No es el nombre del Deployment ni el puerto |
+| Guardar una cadena de conexión con contraseña | **Secret** | Mantiene lo sensible fuera del código y del control de versiones |
+| Cambiar un `.json` sin reconstruir la imagen | Montar un **ConfigMap como volumen** | Reconstruir la imagen es justo lo que se quiere evitar |
+| Errores 500 intermitentes en un pod | **`kubectl logs`** | Lo primero siempre son los logs |
+| Service sin endpoints con pods sanos | **`kubectl describe service`** | Revela si selector y etiquetas no casan |
 
 ## Limitaciones y buenas prácticas anotadas
 - `get_container()` de los starters crea cliente y credencial en cada llamada: en producción, **una sola vez** y reutilizar (el lab 11 ya cachea cliente y contenedores).

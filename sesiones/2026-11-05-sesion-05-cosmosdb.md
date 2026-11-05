@@ -18,8 +18,11 @@ Numeración de la plataforma: LP4 = labs 9-11 (carpetas: `lp4-01-cosmos-queries`
 - **Lab 11 (LP4-03) completado:** tres contenedores con índice `flat`, `quantizedFlat` y `diskANN`; dos funciones de `index_functions.py`; 500 tickets en cada contenedor. Escritura: 5.829,66 / 6.884,66 / 27.535,68 RU (`diskANN` ≈ 4,7× `flat`). Lectura Top 5: 10,13 / 21,60 / 21,60 RU. Con filtro `account`: 8,15 RU en los tres. Detalle en `labs/lp4-03-cosmos-optimize/` y conclusiones en `docs/modulos/04-cosmosdb.md`.
 - **Cleanup:**
   - Lab 9 (`XLabs-278`) y lab 10 (`XLabs-274`): borrado lanzado y visto en `Deleting`, **no verificado** a `false` porque la sesión siguiente trajo otra suscripción.
-  - Lab 11 (`XLabs-232`): borrado lanzado; ver el estado verificado al cierre más abajo.
+  - Lab 11 (`XLabs-232`): borrado lanzado y **verificado** (`az group exists` = `false`; `az group list` sin ningún `rg-ai200-*`, solo `az104-rg7` de otro curso).
 - Preparación: `.claude/settings.json` con permisos de `mkdir` dentro del repo, y regla nueva en `oscar.md` (todo dentro del repo, temporales en `./tmp/`).
+
+- **Notas de la clase del docente** incorporadas a `docs/modulos/04-cosmosdb.md` (extraídas, sin publicar la transcripción): jerarquía de Cosmos DB, consistencia, partition key, vectores y RRF, índices, avisos del test y corrección del test LP3. Dato clave: `quantizedFlat` y `diskANN` necesitan 1.000+ vectores para activarse, lo que confirma la explicación del coste idéntico en el lab 11.
+- **Quiz LP4 (`/quiz-lab`):** 2 de 7 respondidas correctas antes de salir; puntos débiles: coste de escritura frente a lectura y query cross-partition.
 
 ## Decisiones
 - Starters descargados con `curl` y extraídos en `labs/lp4-0N-*` (Linux, `python3`, `source .env`), en lugar de Edge/VS Code/PowerShell de la guía. El parche de PowerShell del lab 10 no aplica a `azdeploy.py`.
@@ -34,6 +37,6 @@ Entrada completa en [`docs/aprendizajes.md`](../docs/aprendizajes.md) (2026-11-0
 ## Pendientes
 - Hacer el **test LP4** (6 preguntas, `docs/LP4 - Knowledge check.pdf`) y la corrección del test de LP3.
 - Task 6 del lab 9 (Query Explorer) y la búsqueda filtrada del lab 10: no ejecutadas; opcionales.
-- Hipótesis sin verificar anotadas en los labs: coste idéntico de `quantizedFlat` y `diskANN` con pocos vectores; calidad semántica baja de los embeddings de ejemplo.
+- Hipótesis aún sin verificar: la calidad semántica baja de los embeddings de ejemplo (el coste idéntico de `quantizedFlat` y `diskANN` ya está explicado por el umbral de 1.000 vectores).
 - Mergear la PR del día (el merge lo hace el alumno) y, si hay un lab 12 (memoria persistente), planificarlo con el docente.
 - `az logout` al terminar.

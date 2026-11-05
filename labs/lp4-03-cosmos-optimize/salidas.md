@@ -118,7 +118,7 @@ quantizedFlat  doc-billing-002  0.0638 · doc-account-001  0.0521 · doc-account
 diskANN        doc-billing-002  0.0638 · doc-account-001  0.0521 · doc-account-100  0.0207
 ```
 **Qué mirar:**
-- **RU:** `flat` es el más barato (10,13); `quantizedFlat` y `diskANN` cuestan **exactamente lo mismo** (21,60), el doble. Con 500 vectores `diskANN` no aporta ventaja. Posible causa (no verificada en esta sesión): con pocos vectores, `quantizedFlat` y `diskANN` no tienen todavía un índice con el que acelerar y recorren los vectores comprimidos, lo que explicaría el coste idéntico.
+- **RU:** `flat` es el más barato (10,13); `quantizedFlat` y `diskANN` cuestan **exactamente lo mismo** (21,60), el doble. Con 500 vectores `diskANN` no aporta ventaja. Causa (diapositivas del curso): `quantizedFlat` y `diskANN` **necesitan 1.000 o más vectores para activarse**; por debajo hacen un escaneo por fuerza bruta. Con 500 vectores los dos hicieron lo mismo, lo que explica el coste idéntico.
 - **Tiempo:** 500-604 ms, muy parecido entre los tres y dominado por la latencia de red desde `mol-bastion` y el proxy; no es una medida fiable del motor. Una sola ejecución no basta para ordenar los índices.
 - **Resultados iguales** en los tres: mismos documentos y mismas puntuaciones. La única diferencia (`doc-account-005` frente a `doc-account-100`) es un **empate**: ambos tienen la misma puntuación (0,0207) y el mismo texto, porque el generador de datos repite plantillas. No es una pérdida de precisión de `diskANN`.
 - **La calidad semántica es baja:** el primero para «no puedo entrar en mi cuenta» es un ticket de facturación (`billing`) con puntuación 0,0638, casi ortogonal. Los 500 vectores no tienen significado real, así que sirven para medir coste, no relevancia.
@@ -137,10 +137,19 @@ quantizedFlat  doc-account-001  0.0521 · doc-account-099  0.0207 · doc-account
 diskANN        doc-account-001  0.0521 · doc-account-098  0.0207 · doc-account-097  0.0207
 ```
 **Qué mirar:**
-- **Los tres cuestan lo mismo (8,15 RU)**, y menos que sin filtro: `flat` baja de 10,13 a 8,15 y `quantizedFlat`/`diskANN` de 21,60 a 8,15 (**−62 %**). Filtrar reduce los candidatos antes del ranking vectorial. Que los tres coincidan sugiere (hipótesis, no verificada) que con pocos documentos filtrados ninguno aprovecha su índice vectorial.
+- **Los tres cuestan lo mismo (8,15 RU)**, y menos que sin filtro: `flat` baja de 10,13 a 8,15 y `quantizedFlat`/`diskANN` de 21,60 a 8,15 (**−62 %**). Filtrar reduce los candidatos antes del ranking vectorial. Que los tres coincidan es coherente con el umbral de 1.000 vectores (ninguno activa su índice) y con que el filtro deja aún menos candidatos.
 - **Solo salen tickets `account`:** el ticket de facturación (`doc-billing-002`, 0,0638) que era el primero sin filtro ya no aparece, y el primero es `doc-account-001` (0,0521).
 - **Las diferencias entre índices** (`doc-account-097/098/099`) son otra vez **empates** (misma puntuación 0,0207 y mismo texto por las plantillas repetidas), no pérdida de precisión.
 - **Tiempo:** 461-673 ms, de nuevo dominado por la red/proxy; no sirve para comparar índices.
 
-## Pendiente de guardar
-Cleanup.
+## 10. Cleanup (verificado)
+```console
+$ az group delete --name rg-ai200-cosmos-optimize --no-wait --yes
+$ az group show -n rg-ai200-cosmos-optimize --query properties.provisioningState -o tsv
+Deleting
+$ az group exists --name rg-ai200-cosmos-optimize
+false                      # tras unos minutos (la cuenta Cosmos tarda en borrarse)
+$ az group list -o table
+az104-rg7  eastus  Succeeded      # de otro curso, no se toca; ningún rg-ai200-*
+```
+**Qué mirar:** a diferencia de los labs 9 y 10, aquí la suscripción no cambió entre el borrado y la comprobación, así que `false` es una prueba válida.
