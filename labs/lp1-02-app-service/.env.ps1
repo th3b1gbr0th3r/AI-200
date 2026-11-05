@@ -1,0 +1,5 @@
+$env:RESOURCE_GROUP = "rg-ai200-appsvc"
+$env:ACR_NAME = "acr00a7662a"
+$env:APP_PLAN = "plan-docprocessor-00a7662a"
+$env:APP_NAME = "app-docprocessor-00a7662a"
+$env:LOCATION = "canadacentral"
