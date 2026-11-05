@@ -1,8 +1,13 @@
 # Credenciales locales (solo para Claude, nunca al repo)
 github.mb
 *.mb
-# .env de los labs: se versionan (cuentas temporales ya destruidas, sin claves),
-# salvo los de LP2 que contienen EMBEDDINGS_API_KEY
+# .env: solo se versionan los de labs/ (para tener el lab completo; cuentas
+# temporales ya destruidas, sin claves). Cualquier otro .env sigue ignorado.
+.env
+.env.*
+!labs/**/.env
+!labs/**/.env.ps1
+# Excepción: los de LP2 contienen EMBEDDINGS_API_KEY
 labs/lp2-01-aca-deploy/.env
 labs/lp2-01-aca-deploy/.env.ps1
 labs/lp2-02-aca-manage/.env

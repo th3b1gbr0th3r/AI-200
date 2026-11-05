@@ -2,6 +2,8 @@
 
 Documentación, notas y laboratorios del curso **AI-200: Developing** (Microsoft Azure).
 
+> **Repositorio de formación.** Es material de estudio de un curso, no un proyecto de producción. Los labs se ejecutan en una plataforma de laboratorios con **cuentas y suscripciones temporales que se destruyen al terminar**; por eso los `.env`, los nombres de recursos y los endpoints que aparecen en `labs/` pertenecen a entornos desechables que ya no existen (no contienen claves; los que las tenían no se publican). Nada de lo que hay aquí debe reutilizarse tal cual en producción.
+
 ## Estructura
 | Ruta | Contenido |
 |---|---|
