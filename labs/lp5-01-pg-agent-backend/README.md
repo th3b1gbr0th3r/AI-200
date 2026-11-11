@@ -1,7 +1,7 @@
 # Lab LP5-01 · Build an agent tool backend (plataforma: Lab 12 · AI-200-LP05M01)
 
 Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-database-postgresql/01-build-agent-tool-backend.html
-Ejecutar con `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` en cada terminal y `python3` (no existe `python`). Origen MIT: ver [`../NOTICE.md`](../NOTICE.md). **Salidas reales saneadas: [`salidas.md`](salidas.md)** (se crea al pegar las primeras).
+Ejecutar con `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` en cada terminal y `python3` (no existe `python`). Origen MIT: ver [`../NOTICE.md`](../NOTICE.md). **Salidas reales saneadas: [`salidas.md`](salidas.md)** (se crea al pegar las primeras). Conversación completa del lab con Claude Code: [`01-lab12-pg-agent-backend.md`](../../sesiones/conversaciones/2026-11-10-sesion-06/01-lab12-pg-agent-backend.md).
 
 **Estado:** completado el 10/11/2026 (servidor `Ready`, esquema creado, `test_workflow.py` correcto con el upsert verificado y las 4 consultas de la Task 7). **Cleanup: borrado lanzado (`Deleting`), no verificado** (la suscripción del lab dejó de estar accesible), ver abajo.
 

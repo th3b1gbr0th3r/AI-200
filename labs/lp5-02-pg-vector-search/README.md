@@ -1,7 +1,7 @@
 # Lab LP5-02 · Implement vector search (plataforma: Lab 13 · AI-200-LP05M02)
 
 Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-database-postgresql/02-implement-vector-search.html
-Ejecutar con `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` en cada terminal y `python3`. Origen MIT: ver [`../NOTICE.md`](../NOTICE.md). Salidas reales saneadas: [`salidas.md`](salidas.md) (se crea al pegar las primeras). Lab anterior: [LP5-01](../lp5-01-pg-agent-backend/README.md).
+Ejecutar con `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` en cada terminal y `python3`. Origen MIT: ver [`../NOTICE.md`](../NOTICE.md). Salidas reales saneadas: [`salidas.md`](salidas.md) (se crea al pegar las primeras). Lab anterior: [LP5-01](../lp5-01-pg-agent-backend/README.md). Conversación completa del lab con Claude Code: [`02-lab13-pg-vector-search.md`](../../sesiones/conversaciones/2026-11-10-sesion-06/02-lab13-pg-vector-search.md).
 
 **Estado:** parcial (10/11/2026). Hecho: servidor, allow-list de `vector`, esquema (pgvector 0.8.7, `vector(330)`, HNSW), `app.py` completado y Flask arrancado. **No hecho:** cargar productos y la búsqueda por similitud en la web (el alumno decidió cerrar el lab). **Cleanup verificado** (`ai200rg` = `false` a las 21:19).
 

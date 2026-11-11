@@ -40,4 +40,10 @@ Entrada completa en [`docs/aprendizajes.md`](../docs/aprendizajes.md) (2026-11-1
 - Cleanup verificado del lab 14.
 
 ## Conversación con Claude Code
-Exportación saneada en [`conversaciones/2026-11-10-sesion-06/`](conversaciones/2026-11-10-sesion-06/): `principal.md` (sesión completa) y tres subagentes que leyeron las guías oficiales de LP5-01 y LP5-02. Se han sustituido el correo, los GUID, el usuario y el TAP del lab, la cuenta de GitHub de empresa y los nombres de persona.
+Exportación saneada, dividida por tramos ([índice](conversaciones/2026-11-10-sesion-06/README.md)):
+- [Inicio: documentación del día](conversaciones/2026-11-10-sesion-06/00-inicio.md)
+- [Lab 12 (LP5-01): agent tool backend](conversaciones/2026-11-10-sesion-06/01-lab12-pg-agent-backend.md), con el desvío sobre hooks, skills y memoria de agentes en PostgreSQL
+- [Lab 13 (LP5-02): vector search](conversaciones/2026-11-10-sesion-06/02-lab13-pg-vector-search.md)
+- [Cierre: commit, push y PR](conversaciones/2026-11-10-sesion-06/03-cierre.md)
+
+Además, tres subagentes que leyeron las guías oficiales de LP5-01 y LP5-02 (enlazados en el índice). Se han sustituido el correo, los GUID, el usuario y el TAP del lab, la cuenta de GitHub de empresa y los nombres de persona.
