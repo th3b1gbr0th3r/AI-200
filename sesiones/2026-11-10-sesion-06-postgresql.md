@@ -1,5 +1,15 @@
 # Sesión 6 — 10/11/2026 · LP5 Azure Database for PostgreSQL
 
+## Cómo seguir esta clase (hilo conductor)
+**Idea del día:** el mismo problema que en Cosmos DB (memoria y búsqueda vectorial para un agente), pero con PostgreSQL: tablas relacionales, upsert idempotente y la extensión `pgvector`. Acceso solo con Entra: la «contraseña» es un token que caduca a la hora.
+
+1. **Teoría LP5:** Flexible Server, autenticación con Entra, pgvector, HNSW frente a IVFFlat y optimización. → [índice LP5](../docs/modulos/05-postgresql.md) y notas [M1](../docs/modulos/05-1-postgresql-build-query.md), [M2](../docs/modulos/05-2-postgresql-vector-search.md) y [M3](../docs/modulos/05-3-postgresql-optimize.md).
+2. **Lab 12 · Agent backend:** servidor solo Entra (pasos 3-6, con el primer intento fallido por la política de región), conexión con `psql` y token (8-9), esquema con `UNIQUE` y upsert (11), flujo del agente (12) y consultas de contexto (13). Por qué: el upsert es el `kubectl apply` de SQL. → [README del lab 12](../labs/lp5-01-pg-agent-backend/README.md) · [conversación](conversaciones/2026-11-10-sesion-06/01-lab12-pg-agent-backend.md).
+3. **Lab 13 · Vector search:** habilitar `vector` en el servidor (paso 5) y en la base de datos (paso 8), índice HNSW y app Flask (9). La carga y la búsqueda (pasos 10-11) quedaron sin hacer. → [README del lab 13](../labs/lp5-02-pg-vector-search/README.md) · [conversación](conversaciones/2026-11-10-sesion-06/02-lab13-pg-vector-search.md).
+4. **Limpieza** y **repaso:** [aprendizaje del día](../docs/aprendizajes.md).
+
+---
+
 Material: presentación `AI-200T00A-05` y knowledge check de LP5 (PDF en `docs/`, descargados de la carpeta de Drive del curso; metadatos de autor saneados en el LP5).
 
 ## Planning del día (enviado por el docente)

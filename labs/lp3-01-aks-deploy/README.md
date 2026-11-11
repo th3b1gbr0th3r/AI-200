@@ -1,227 +1,561 @@
-# Lab LP3-01 · Deploy an AI inference API to AKS
+# Lab LP3-01 · Deploy an AI inference API to AKS (plataforma: Lab 6 · AI-200-LP03M01)
 
-Guía oficial: https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-kubernetes-service/01-aks-deploy-container.html
-Ejecutar con `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt` en cada terminal. Starter de la plataforma: `aks-deploy-python-plataforma.zip` (descargado del enlace del Task 4; es el que se usa en el lab). Starter público original: `aks-deploy-python.zip`. Origen MIT: ver [`../NOTICE.md`](../NOTICE.md). Notas de clase: [`docs/modulos/03-aks.md`](../../docs/modulos/03-aks.md). Salidas reales saneadas: [`salidas.md`](salidas.md) (se crea al ejecutar).
+- **Guía oficial:** https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-kubernetes-service/01-aks-deploy-container.html (índice en [`docs/00-plan/labs-oficiales.md`](../../docs/00-plan/labs-oficiales.md)).
+- **Estado (03/11/2026): completado.** Hechos todos los pasos: Foundry y `gpt-5.1` en el portal, ACR, imagen, AKS, manifiestos aplicados con `az aks command invoke` y API probada con `curl` y con el cliente (opciones 1-4). **Cleanup verificado** a las 19:57 (grupo de la plataforma con 0 recursos, sin soft-delete) y kubeconfig local limpio a las 20:42.
+- **Incidencia principal:** el proxy de empresa bloquea `kubectl` contra el API server de AKS (paso 12). Desde ese día la regla es **primero `az`, después lo local**.
+- Registro de la sesión: [`sesiones/2026-11-03-sesion-04-aks.md`](../../sesiones/2026-11-03-sesion-04-aks.md). Notas del módulo: [`docs/modulos/03-aks.md`](../../docs/modulos/03-aks.md). Cómo crea el script el ACR: [`../acr-en-azdeploy.md`](../acr-en-azdeploy.md).
+- Lab anterior: [LP2-03](../lp2-03-aca-scale/README.md) · Lab siguiente: [LP3-02](../lp3-02-aks-configure/README.md). Origen MIT de `azdeploy.py`, `api/`, `client/` y `k8s/`: ver [`../NOTICE.md`](../NOTICE.md).
 
-**Estado:** completado el 03/11/2026 (cleanup por recursos lanzado; AKS en `Deleting` al cierre de este documento, a verificar). Salidas reales saneadas: [`salidas.md`](salidas.md).
+Cada paso tiene: **por qué → comando → salida real (saneada) → qué mirar → comprobación**. Saneado: IDs de suscripción/tenant, usuario, Temporary Access Pass y código de dispositivo fuera; hash de ACR/AKS como `<hash>`, IP pública como `<ip>`, recurso de Foundry como `xlab-<id>`.
 
-## Objetivo
-Desplegar en AKS una API de inferencia (modelo `gpt-5.1` de Foundry, imagen en ACR), completar `deployment.yaml` (contenedor, liveness, requests/limits) y `service.yaml` (LoadBalancer) y probar con el cliente Python.
+## Qué se construye
+Una API FastAPI (`api/`) que hace de pasarela hacia el modelo `gpt-5.1` de Foundry, empaquetada en ACR y desplegada en AKS detrás de un LoadBalancer público. El pod llama al modelo **sin claves**: con la identidad del kubelet y el rol *Cognitive Services OpenAI User*.
 
-## Antes de empezar
-Usamos el **starter de la plataforma** (distinto del público). Diferencias en `azdeploy.py`:
-| Aspecto | Starter público | Starter de la plataforma |
+```
+Portal (Task 1-2) → proyecto Foundry xlab-<id> + despliegue gpt-5.1 (5000 TPM)   [grupo ResourceMoverRG-… de la plataforma]
+azdeploy.py 1     → ACR acr<hash> (Basic)
+azdeploy.py 2     → az acr build → imagen aks-api:latest (se construye en la nube, sin Docker local)
+azdeploy.py 3     → AKS aks-<hash> (1 nodo Standard_D2s_v3, --attach-acr = AcrPull al kubelet)
+azdeploy.py 5     → rol OpenAI User al kubelet ✔ · kubectl apply ✘ (proxy)
+az aks command invoke → kubectl apply deployment.yaml + service.yaml (dentro del cluster)
+cliente (PC) ──HTTP──► LoadBalancer <ip>:80 ──► pod aks-api:8000 ──Entra ID──► gpt-5.1
+```
+
+**El objetivo, en cristiano:** pasar de «tengo un modelo en Foundry» a «tengo una API en Kubernetes que lo usa», con las tres piezas que importan en el examen: el **registro** (ACR, de dónde sale la imagen), el **cluster** (AKS, dónde corre) y la **identidad** (cómo baja la imagen y cómo llama al modelo sin secretos). Para un SysOps de K8s lo nuevo no son los manifiestos, sino la parte Azure: `AcrPull` en vez de `imagePullSecrets`, rol RBAC en vez de API key, LoadBalancer de Azure.
+
+### El starter de la plataforma no es el público
+La plataforma da su propio zip (`aks-deploy-python-plataforma.zip`, del enlace del Task 4); `aks-deploy-python.zip` es el público, solo para comparar.
+
+| Aspecto | Starter público | Starter de la plataforma (el usado) |
 |---|---|---|
-| Valores iniciales | `rg`, `location` | `rg`, `location`, `foundryEndpoint`, `foundryDeploymentName` |
-| Grupo de recursos | lo crea el script | **ya existe** (el de la plataforma): ACR y AKS se crean dentro |
-| Foundry y modelo | opción 1 crea recurso y despliega `gpt-5-mini` | se crean **a mano en el portal** (Tasks 1-2); el script solo los referencia |
-| Nombre del recurso Foundry | derivado de un hash | se deduce del `foundryEndpoint` (`https://<recurso>.openai.azure.com/`) |
-| VM del AKS | `Standard_D2s_v7` | `Standard_D2s_v3` (si no hay en la región: v4 o v5) |
-| Menú | 1 Foundry · 2 ACR · 3 build · 4 AKS · 5 estado · 6 deploy · 7/8/9 | **1 ACR · 2 build · 3 AKS · 4 estado · 5 deploy · 6 borrar AKS fallido · 7 salir** |
+| Valores a rellenar | `rg`, `location` | `rg`, `location`, `foundryEndpoint`, `foundryDeploymentName` |
+| Grupo de recursos | lo crea el script | **ya existe** (`ResourceMoverRG-…`, de la plataforma) |
+| Foundry y modelo | opción 1 crea recurso y `gpt-5-mini` | **a mano en el portal** (Tasks 1-2), modelo `gpt-5.1` |
+| VM del AKS | `Standard_D2s_v7` | `Standard_D2s_v3` |
+| Menú | 1 Foundry · 2 ACR · 3 build · 4 AKS · 5 estado · 6 deploy… | **1 ACR · 2 build · 3 AKS · 4 estado · 5 deploy · 6 borrar AKS fallido · 7 salir** |
+| Cleanup de la guía | `az group delete` | **prohibido**: el grupo no es nuestro → borrar por recursos |
 
-Valores aplicados (03/11/2026): `rg` = grupo de la plataforma (`ResourceMoverRG-…`), `location` = `southeastasia` (la región del **grupo**, no la del recurso Foundry, que está en `swedencentral`), `foundryEndpoint` = endpoint *OpenAI* del recurso (`…openai.azure.com`), `foundryDeploymentName` = `gpt-5.1`. «No cambiar nada más» en el script.
-- Revisado el código del starter: solo llama a `az` y `kubectl` (único `os.system`: `clear`); sin red propia.
-- La opción 5 hace `az aks get-credentials` (escribe `~/.kube/config`), da el rol *Cognitive Services OpenAI User* al kubelet **sobre el recurso Foundry buscándolo en `rg`** (por eso el recurso tiene que estar en ese mismo grupo), sustituye `ACR_ENDPOINT`, `FOUNDRY_ENDPOINT` y el nombre del despliegue en `deployment.yaml` y aplica los manifiestos con `kubectl`.
-- `deployment.yaml` y `service.yaml` llegan **con huecos** (`service.yaml` vacío): se completan según la guía antes de la opción 5.
-- Los valores del recurso del lab no se suben al repo tal cual: antes del commit se sustituyen por `<recurso>`.
+Revisado el código antes de ejecutarlo: solo llama a `az` y `kubectl` (único `os.system`: `clear`). La opción 5 hace `az aks get-credentials`, asigna el rol *OpenAI User* al kubelet sobre el recurso Foundry **buscándolo en `rg`**, sustituye `ACR_ENDPOINT`, `FOUNDRY_ENDPOINT` y `gpt-5-mini` en `deployment.yaml` y aplica con `kubectl` local (lo que falla aquí).
 
-## Diferencias de la plataforma respecto a la guía oficial
-| Cambio | Detalle |
-|---|---|
-| Task 1 previa | Crear un **proyecto de Microsoft Foundry desde el portal** (`https://ai.azure.com`): entrar con el usuario y el Temporary Access Pass de la pestaña *Info* del lab (*Cloud Express Pass*) y esperar a que se cree solo. No crea grupo nuevo: usa el `ResourceMoverRG-…` de la plataforma |
-| Task 2 | Desplegar **`gpt-5.1`** a mano en el proyecto (*Discover → Models → Deploy → Custom settings*, **5000 TPM**) y anotar el nombre del despliegue. Sustituye a la opción 1 del menú público |
-| Task 3 | Obtener grupo, región del **grupo** (`southeastasia`) y endpoint *OpenAI* (`…openai.azure.com`). Con `az`: `configurar.sh` lo hace |
-| Task 4 | Descargar el starter de la plataforma y rellenar 4 valores en `azdeploy.py`; menú propio (ver tabla de arriba) |
-| Cleanup | El recurso Foundry y el despliegue del portal viven en el grupo de la plataforma: **no borrar el grupo**, solo los recursos del curso (ver cleanup) |
+---
 
-## Incidencias
-| Síntoma | Causa | Arreglo |
-|---|---|---|
-| `az cognitiveservices account list` vacío tras entrar en el portal | El proyecto aún no se había creado (o login con otra cuenta) | Esperar unos minutos y repetir; comprobar usuario `XLab-…` y probar en incógnito |
-| `x509: certificate signed by unknown authority` en la opción 5 al hacer `kubectl apply` | Proxy de empresa re-firma el TLS; `kubectl` solo confía en la CA del cluster. Quitar la CA no basta: el proxy transparente bloquea el API server (`502 IncompleteCertChain`) | Renderizar el YAML con `sed` y usar `az aks command invoke … --command "kubectl …" --file …` (comando 12; `salidas.md` 10-11) |
-| `pip list \| grep openai` no muestra nada en el cliente | El cliente solo usa `httpx` y `python-dotenv`; `openai` es de la API (pod) | Es lo esperado: comprobar `httpx` y `python-dotenv` |
-
-## Reproducir este lab (artefactos guardados)
-| Artefacto | Para qué |
-|---|---|
-| `aks-deploy-python-plataforma.zip` | Starter **original de la plataforma** (Task 4), sin editar. Fuente de verdad |
-| `aks-deploy-python.zip` | Starter público de Microsoft Learning, para comparar |
-| `azdeploy.py`, `api/`, `client/`, `k8s/` | Starter extraído; `k8s/*.yaml` ya con los huecos completados |
-| `configurar.sh` | Rellena los 4 valores de `azdeploy.py` con consultas `az` de lectura, partiendo del zip original |
-| `salidas.md` | Salidas reales saneadas de cada comando |
-
-Pasos para repetirlo en otro lab o suscripción:
-1. `az login --use-device-code` (con `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt`) y `az group list -o table`.
-2. Task 1-2 en el portal: proyecto de Foundry y despliegue `gpt-5.1` con 5000 TPM.
-3. `./configurar.sh <grupo-de-la-plataforma>` → genera `azdeploy.py`. Comprobar: imprime `Placeholders YOUR_ restantes: 0`; si no hay recurso `AIServices` o despliegue, lo dice y sale.
-4. `python3 azdeploy.py` → opciones 1, 2, 3, 4 y 5 (ver «Comandos al detalle»).
-5. Cliente Python y cleanup (más abajo).
-
-> **Antes de subir al repo:** `azdeploy.py` lleva el endpoint con el identificador del lab. En el commit se deja con `https://<recurso>.openai.azure.com/` y el nombre real del grupo se mantiene (es el de la plataforma); `configurar.sh` regenera el fichero real cuando se necesite.
-
-## Pasos
-1. Login y estado inicial (`az login`, `az group list`, proveedores).
-2. Portal: Task 1 (proyecto de Foundry) y Task 2 (despliegue `gpt-5.1`, 5000 TPM).
-3. Task 3-4: `./configurar.sh <grupo>` rellena los 4 valores de `azdeploy.py`.
-4. Completar `k8s/deployment.yaml` (contenedor, liveness, resources) y `k8s/service.yaml` según la guía.
-5. `python3 azdeploy.py`: **1** ACR · **2** build · **3** AKS · **4** estado · **5** deploy.
-6. Si la 5 falla por el proxy (`x509`): renderizar el YAML con `sed` y aplicar con `az aks command invoke` (ver comando 12).
-7. Probar: `curl /healthz` y `/readyz`; cliente Python (`client/.env`, venv, `python main.py`, opciones 1-4).
-
-## Comandos al detalle
-Los que crean o borran recursos los lanza el alumno. Salidas reales en [`salidas.md`](salidas.md).
-
-### 1. `export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt`
+## Paso 0 · Preparar la terminal
+**Por qué:** el proxy de empresa re-firma el TLS; `az` (Python) solo confía en él si se le indica el almacén del sistema. Hay que hacerlo **en cada terminal nueva**.
+```bash
+cd ~/claude/AI-200-Developing/labs/lp3-01-aks-deploy
+export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 ```
-export                  → variable de entorno solo para esta terminal
-REQUESTS_CA_BUNDLE      → la librería requests (que usa az) la lee como almacén de CAs
-/etc/ssl/certs/ca-certificates.crt → almacén del sistema, con la CA del proxy de empresa
-```
-- **Qué hace:** hace que `az` confíe en la CA que re-firma el TLS del proxy.
-- **Por qué hace falta:** sin ella `az login` falla con `SSLCertVerificationError`.
-- **Qué esperar:** no imprime nada. Comprobar: `echo $REQUESTS_CA_BUNDLE` → la ruta. Repetirlo en cada terminal nueva.
-- **Trampa:** esta es una variable acordada del curso; cualquier otra variable de entorno no se muestra sin avisar (ver `CLAUDE.md`).
+✅ **Comprobación:** `echo $REQUESTS_CA_BUNDLE` → `/etc/ssl/certs/ca-certificates.crt` (variable acordada del curso, se puede mostrar). Si sale vacío, repite el `export`; sin ella `az login` falla con `SSLCertVerificationError`.
 
-### 2. `az login --use-device-code`
+## Paso 1 · `az login` con el usuario del lab
+**Por qué:** cada lab trae un usuario temporal y una suscripción propia. El *Temporary Access Pass* solo vale en login interactivo (navegador, mejor en incógnito), por eso `--use-device-code`.
+```bash
+az login --use-device-code
 ```
-az login            → autenticación en Entra ID
---use-device-code   → az da un código y una URL; el login se completa en el navegador
-```
-- **Qué hace:** abre sesión y guarda el token en `~/.azure`.
-- **Por qué hace falta:** el *Temporary Access Pass* del lab solo vale en login interactivo (navegador, mejor en incógnito); no sirve con usuario y contraseña en terminal.
-- **Qué esperar:** una única suscripción `XLabs-<n>` y tenant `Lab Directory`; Enter acepta la predeterminada. Comprobar: `az account show --query state -o tsv` → `Enabled`.
-- **Si no coincide:** código caducado → repetir el comando; pase caducado → pedir uno nuevo en la plataforma.
+Salida real:
+```text
+To sign in, use a web browser to open the page https://login.microsoft.com/device and enter the code <código> to authenticate.
 
-### 3. `az group list -o table`
-```
-az group list   → lista los resource groups de la suscripción
--o table        → salida tabular legible
-```
-- **Qué hace / por qué:** inventario inicial; confirma que no quedan restos de labs anteriores y es la base del cleanup final.
-- **Qué esperar:** solo `ResourceMoverRG-…`, que crea la plataforma y **no se toca**. Cualquier `rg-ai200-*` es un resto → borrarlo con `az group delete --name <rg> --no-wait --yes` y repetir hasta que desaparezca.
+[Tenant and subscription selection]
 
-### 4. `az provider list … -o table` (y `az provider register --namespace …`)
-```
-az provider list           → proveedores de recursos y su estado de registro
---query "[?namespace=='…'].{ns:namespace, estado:registrationState}" → JMESPath: filtra los seis y muestra su estado
-az provider register       → activa un proveedor en la suscripción (asíncrono)
-```
-- **Qué hace / por qué:** una suscripción nueva no puede crear AKS, ACR o Foundry si el proveedor no está `Registered`.
-- **Qué esperar:** los seis (CognitiveServices, ContainerService, ContainerRegistry, Compute, Network, Storage) en `Registered`; aquí ya lo estaban, así que el `register` no hizo falta.
-- **Si no coincide:** `Registering` → esperar y repetir el `list`; `NotRegistered` → lanzar el `register`.
-- **K8s:** no hay equivalente; es parte del modelo de suscripción de Azure.
+No     Subscription name    Subscription ID                       Tenant
+-----  -------------------  ------------------------------------  -------------
+[1] *  XLabs-<n>            <sub-id>                              Lab Directory
 
-### 5. `sed -i 's|<your-resource-group-name>|rg-ai200-aks|; s|<your-azure-region>|eastus2|' azdeploy.py`
-```
-sed -i      → edita el fichero en el sitio
-s|a|b|      → sustituye a por b (| de delimitador porque los valores no lo llevan)
-```
-- **Qué hace:** fija el grupo y la región que usará el script (solo edita un fichero local).
-- **Comprobar:** `grep -n '^rg\|^location' azdeploy.py` → `rg = "rg-ai200-aks"` y `location = "eastus2"`.
-- **Si no coincide:** editar las dos líneas a mano (líneas 5 y 6).
+Select a subscription and tenant (Type a number or Enter for no changes):
 
-### 6. Proyecto de Foundry en el portal (Task 1 de la plataforma) y su comprobación
+Tenant: Lab Directory
+Subscription: XLabs-<n> (<sub-id>)
 ```
-az cognitiveservices account list                 → recursos de Cognitive Services / Foundry de la suscripción
---query "[].{nombre:name, rg:resourceGroup, tipo:kind, region:location}" → columnas útiles
-```
-- **Qué hace / por qué:** el portal crea automáticamente el proyecto (un recurso `AIServices` en un grupo nuevo); la plataforma lo exige antes del resto.
-- **Qué esperar:** una fila `AIServices` en `swedencentral` y `provisioningState` = `Succeeded` (`az cognitiveservices account show … --query properties.provisioningState -o tsv`). **No aparece grupo nuevo**: el proyecto se crea dentro de `ResourceMoverRG-…`, el de la plataforma. Hecho el 03/11/2026 (ver `salidas.md`, apartado 4).
-- **Si no coincide:** esperar unos minutos y repetir; comprobar que el portal usa el usuario del lab (incógnito).
-- **Examen:** Foundry project = recurso de Cognitive Services de tipo `AIServices` + proyecto hijo.
+**Qué mirar:** una sola suscripción `XLabs-<n>` en el tenant `Lab Directory`, marcada con `*`; Enter la acepta. El pase se escribe en el navegador, nunca en la terminal.
 
-### 7. `az cognitiveservices account deployment list … -o table`
+✅ **Comprobación:**
+```bash
+az account show --query "{estado:state, sub:name}" -o table
 ```
-az cognitiveservices account deployment list → despliegues de modelo de un recurso Foundry/OpenAI
--g / -n   → grupo y nombre del recurso (el del portal)
---query   → nombre, modelo, versión, estado, capacidad y SKU
+Salida real:
+```text
+Estado    Sub
+--------  ---------
+Enabled   XLabs-<n>
 ```
-- **Qué hace / por qué:** confirma que el modelo existe antes de que el código lo llame; un `404 DeploymentNotFound` desde la API suele ser un nombre de despliegue mal escrito.
-- **Qué esperar:** `gpt-5.1`, `Succeeded`, `Tpm` = 5 (miles de TPM, es decir 5000), `GlobalStandard`.
-- **Si no coincide:** `Failed` → cuota o región (releer el mensaje del portal); sin filas → el despliegue no terminó, repetir tras 1-2 min.
-- **K8s/examen:** el *deployment name* es lo que se pasa como `model` en el SDK, no el nombre del modelo; pueden diferir.
+Si sale la cuenta de empresa o un lab anterior: `az logout` y repite. Si el código caduca, relanza el comando; si caduca el pase, pide otro en la plataforma.
 
-### 8. `python3 azdeploy.py` → opción 1 (Create Azure Container Registry)
+## Paso 2 · Inventario inicial de la suscripción
+**Por qué:** saber qué había **antes** es la base del cleanup: al final solo se borra lo que no estaba.
+```bash
+az group list -o table
 ```
-python3 azdeploy.py   → menú interactivo del starter de la plataforma
-opción 1              → az acr create en el grupo existente (rg) y la región (location) del script
+Salida real:
+```text
+Name                                      Location       Status
+----------------------------------------  -------------  ---------
+ResourceMoverRG-eastus-southeastasia-sea  southeastasia  Succeeded
 ```
-- **Qué hace:** crea el registro `acr<hash>` (SKU Basic); el nombre sale de un hash de tu identidad, así que es reproducible y único.
-- **Por qué hace falta:** AKS descargará de aquí la imagen `aks-api`; ACR Tasks (opción 2) construye la imagen en la nube.
-- **Qué esperar:** mensaje de éxito y vuelta al menú. Comprobar: `az acr list -g <rg> -o table` → una fila `acr<hash>`, `Succeeded`.
-- **Si no coincide:** nombre en uso o proveedor sin registrar → leer el error del script; sin filas → no terminó, repetir la opción 1 (es idempotente: si existe, lo dice).
-- **K8s:** el registry es el equivalente a tu registry privado; en AKS el acceso se da por identidad (`AcrPull`), no con `imagePullSecrets`.
+**Qué mirar:** el único grupo, `ResourceMoverRG-…`, lo crea la plataforma. En este lab **todo se crea dentro de él**, así que no se podrá borrar el grupo al final.
 
-### 9. `python3 azdeploy.py` → opción 2 (Build and push API image to ACR)
-```
-az acr build --resource-group <rg> --registry <acr> --image aks-api:latest --file api/Dockerfile --no-logs api/
-```
-- **Qué hace:** sube la carpeta `api/` (viene en el zip; el script **no** la crea) a ACR Tasks, que construye la imagen con el Dockerfile en un agente efímero de la nube y la publica como `aks-api:latest`.
-- **Por qué:** AKS descarga la imagen del registro; no hace falta Docker local.
-- **Qué esperar:** éxito y vuelta al menú (3-5 min). Comprobar: `az acr repository show-tags -n <acr> --repository aks-api -o tsv` → `latest`; `az acr task list-runs -r <acr> -o table` → `Succeeded`.
-- **Si no coincide:** `--no-logs` oculta el log → `az acr task logs -r <acr> --run-id <id>`; ejecutar siempre desde esta carpeta (necesita `api/`).
+✅ **Comprobación:** ningún `rg-ai200-*` = sin restos de labs anteriores. Si hubiera alguno, bórralo (`az group delete --name <rg> --no-wait --yes`) antes de seguir.
 
-### 10. `python3 azdeploy.py` → opción 3 (Create AKS cluster)
+## Paso 3 · Proveedores de recursos
+**Por qué:** una suscripción nueva no puede crear AKS, ACR o Foundry si el proveedor no está `Registered`. La guía manda `az provider register`; antes de lanzarlo se mira si hace falta.
+```bash
+az provider list --query "[?namespace=='Microsoft.ContainerService'||namespace=='Microsoft.ContainerRegistry'||namespace=='Microsoft.CognitiveServices'||namespace=='Microsoft.Compute'||namespace=='Microsoft.Network'||namespace=='Microsoft.Storage'].{ns:namespace, estado:registrationState}" -o table
 ```
-az aks create → clúster de 1 nodo Standard_D2s_v3 con identidad gestionada
---attach-acr  → asigna AcrPull a la identidad del kubelet sobre el ACR
+Salida real:
+```text
+Ns                           Estado
+---------------------------  ----------
+Microsoft.CognitiveServices  Registered
+Microsoft.Storage            Registered
+Microsoft.ContainerService   Registered
+Microsoft.Network            Registered
+Microsoft.Compute            Registered
+Microsoft.ContainerRegistry  Registered
 ```
-- **Qué hace:** crea `aks-<hash>` en el grupo y la región del script (5-10 min).
-- **Por qué:** es donde correrán los pods. La identidad gestionada + `AcrPull` evita secretos de registro.
-- **Qué esperar:** éxito y vuelta al menú. Comprobar: `az aks show -g <rg> -n <aks> --query "{estado:provisioningState, energia:powerState.code}" -o table` → `Succeeded` / `Running`; y `az role assignment list --scope <id-ACR> --query "[?roleDefinitionName=='AcrPull']" -o table` → una fila.
-- **Si no coincide:** `Creating` → esperar; `Failed` → opción 6 y repetir (si es SKU/cuota, cambiar `AKS_VM_SIZE`). Cuota comprobada antes: 0 de 350 vCPU.
-- **K8s:** control plane gestionado por Azure (no lo administras); el pool de nodos es un VM Scale Set.
+**Qué mirar:** los seis ya `Registered`: los `az provider register` de la guía **no hicieron falta**.
 
-### 11. `python3 azdeploy.py` → opción 4 (Check deployment status)
-- **Qué hace:** consulta (solo lectura) el estado del despliegue del modelo en Foundry, del ACR y del AKS.
-- **Qué esperar:** los tres en `Succeeded` y «AKS cluster is ready for deployment». Si alguno no lo está, no lanzar la opción 5.
-- **Si no coincide:** `Creating` → esperar y repetir; AKS `Failed` o `Canceled` → opción 6 y repetir la 3.
+✅ **Comprobación:** si alguno sale `NotRegistered`, lanza `az provider register --namespace <ns>` y repite el `list` hasta ver `Registered` (`Registering` = esperar).
 
-### 12. Aplicar y verificar sin `kubectl` local: `az aks command invoke`
+## Paso 4 · Task 1 (portal): crear el proyecto de Foundry
+**Por qué:** en el starter de la plataforma el script **no** crea Foundry; el proyecto y su recurso `AIServices` se crean desde `https://ai.azure.com` con el usuario del lab (pestaña *Info* → *Cloud Express Pass*).
+
+Datos del diálogo *Create a project*, aceptados por defecto: proyecto `xlab-<id>`, recurso `xlab-<id>-resource`, región **Sweden Central**, grupo `ResourceMoverRG-…` (el de la plataforma). Sin marcar «Set up recommended resources» (evita un App Insights extra; aun así el portal creó App Insights y Log Analytics, que luego desaparecieron solos).
+
+Comprobación con `az` (en vez de mirar el portal):
+```bash
+az cognitiveservices account list --query "[].{nombre:name, rg:resourceGroup, tipo:kind, region:location}" -o table
 ```
-az aks command invoke -g <rg> -n <aks> --command "kubectl apply -f deployment.yaml -f service.yaml" --file deployment.yaml --file service.yaml
-  --command   → comando que corre en un pod efímero dentro del cluster
-  --file      → sube el fichero local a ese pod para que el comando lo vea
+Salida real (primer intento, a las 18:14, todavía creándose):
+```text
+(sin filas)
 ```
-- **Qué hace / por qué:** ejecuta `kubectl` dentro de Azure vía ARM; necesario cuando el proxy bloquea el API server. Antes hay que renderizar el YAML con `sed` (`ACR_ENDPOINT`, `FOUNDRY_ENDPOINT`, `gpt-5-mini` → `gpt-5.1`), porque el script no llegó a hacerlo.
-- **Qué esperar:** `exitcode=0`, `created` y luego `successfully rolled out`, `1/1`, `EXTERNAL-IP` pública.
-- **Si no coincide:** `ImagePullBackOff` → falta AcrPull o imagen; `CrashLoopBackOff` → `kubectl logs`; IP `<pending>` → esperar.
+Salida real (18:18):
+```text
+Nombre                      Rg                                        Tipo        Region
+--------------------------  ----------------------------------------  ----------  -------------
+xlab-<id>-resource          ResourceMoverRG-eastus-southeastasia-sea  AIServices  swedencentral
+```
+**Qué mirar:** un recurso `AIServices` en `swedencentral` **dentro del grupo de la plataforma**: no se crea grupo nuevo. Proyecto de Foundry = recurso de Cognitive Services tipo `AIServices` + proyecto hijo.
 
-### 13. Probar la API y el cliente
-- `curl -m 20 http://<ip>/healthz` → `alive`; `/readyz` → `ready`. La IP: `az aks command invoke … --command "kubectl get svc aks-api-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"`.
-- Cliente: `client/.env` con `API_ENDPOINT=http://<ip>` (la opción 5 no llegó a escribirlo), `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && python main.py`.
-- **Estado:** curl verificado (HTTP 200 en ambos); opciones 1-4 del cliente confirmadas por el alumno; salida literal guardada de la 4.
-- **Concepto:** la API arma la lista de mensajes (roles `system`/`user`/`assistant`) y llama a `gpt-5.1` con `DefaultAzureCredential`; el cliente solo habla HTTP con la API.
+✅ **Comprobación:**
+```bash
+az cognitiveservices account show -g ResourceMoverRG-eastus-southeastasia-sea -n xlab-<id>-resource --query "{estado:properties.provisioningState, sku:sku.name}" -o table
+```
+Salida real: `Succeeded  S0`. Si la lista sale vacía, espera unos minutos y repite; si sigue vacía, comprueba que el portal usa el usuario del lab (incógnito).
 
-## Cómo `azdeploy.py` crea el ACR y lo vincula
-Explicación general (piezas del script, push frente a pull, comprobaciones): [`../acr-en-azdeploy.md`](../acr-en-azdeploy.md). En este lab, según el código de su `azdeploy.py`:
-| Paso | Comando `az` | Detalle en este script |
-|---|---|---|
-| Crear el ACR | `az acr create` (L199) | `--sku Basic`, `--admin-enabled true` (no se usa: el pull es por identidad) |
-| Subir la imagen | `az acr build` | `az acr build` (L226) con `aks-api:latest` |
-| Vincular (pull) | ver fila siguiente | `az aks create … --attach-acr` (L290): AcrPull al kubelet. Aparte, `az role assignment create` (L399) da *Cognitive Services OpenAI User* sobre Foundry: no es del ACR |
-- **Push y pull son permisos distintos:** el build lo hace ACR en la nube con tu `az login`; la descarga la hace el servicio con una identidad y el rol **AcrPull**.
-- **Comprobar el vínculo (solo lectura):** `az role assignment list --scope <id-ACR> --query "[?roleDefinitionName=='AcrPull']" -o table` (una fila `ServicePrincipal`).
-- **Si el servicio no descarga la imagen** (`ImagePullBackOff`): falta AcrPull o la imagen/tag no existe → `az acr repository show-tags -n <acr> --repository <imagen> -o tsv` y la lista de roles de arriba.
+## Paso 5 · Task 2 (portal): desplegar `gpt-5.1`
+**Por qué:** la API necesita un *deployment* del modelo. Su **nombre** es lo que el código pasa como `model`, no el nombre del modelo (pueden diferir).
 
-## Cleanup (por recursos: el grupo es de la plataforma)
-> **No ejecutar `az group delete`** de la guía: el starter de la plataforma usa un grupo **ya existente** (`ResourceMoverRG-…`) que contiene también el Foundry y recursos de la plataforma. Se borra solo lo que creamos nosotros.
+En el proyecto: *Discover → Models → gpt-5.1 → Deploy → Custom settings*, **Tokens per Minute Rate Limit = 5000**. Nombre del despliegue: `gpt-5.1`.
+```bash
+az cognitiveservices account deployment list -g ResourceMoverRG-eastus-southeastasia-sea -n xlab-<id>-resource \
+  --query "[].{nombre:name, modelo:properties.model.name, version:properties.model.version, estado:properties.provisioningState, tpm:sku.capacity, sku:sku.name}" -o table
+```
+Salida real:
+```text
+Nombre    Modelo    Version     Estado     Tpm    Sku
+--------  --------  ----------  ---------  -----  --------------
+gpt-5.1   gpt-5.1   2025-11-13  Succeeded  5      GlobalStandard
+```
+**Qué mirar:** `Succeeded`; `Tpm` = 5 porque la capacidad va en **miles** de TPM (5 = 5000; el portal mostró también 50 RPM); `GlobalStandard` = despliegue global de pago por uso.
+
+✅ **Comprobación:** fila `gpt-5.1` en `Succeeded`. Sin filas → aún no ha terminado (repite en 1-2 min); `Failed` → cuota o región, lee el mensaje del portal. El portal enseña también una *Key*: **no se usa ni se guarda**, la API entra con identidad.
+
+## Paso 6 · Task 3-4: rellenar los cuatro valores de `azdeploy.py`
+**Por qué:** el script crea ACR y AKS en `rg`/`location` y necesita el endpoint OpenAI y el nombre del despliegue para dárselos al pod. Ojo: `location` es la región **del grupo** (`southeastasia`), no la del recurso Foundry (`swedencentral`).
+
+Primero `az` (consultas de solo lectura, en lugar de copiar del portal): [`configurar.sh`](configurar.sh) saca los cuatro valores y genera `azdeploy.py` desde el zip original.
+```bash
+./configurar.sh ResourceMoverRG-eastus-southeastasia-sea
+diff <(unzip -p aks-deploy-python-plataforma.zip azdeploy.py) azdeploy.py
+```
+Salida real del `diff` (el 03/11 la edición se hizo con `sed` con estos mismos valores; `configurar.sh` se escribió después para repetirlo):
+```text
+5,8c5,8
+< rg                    = "YOUR_RESOURCE_GROUP"    # Existing resource group name (Task 3)
+< location              = "YOUR_REGION"            # Azure region in CLI format, e.g. eastus, eastus2 (Task 3)
+< foundryEndpoint       = "YOUR_FOUNDRY_ENDPOINT"  # OpenAI endpoint URL (Task 3), e.g. https://<recurso>.openai.azure.com/
+< foundryDeploymentName = "YOUR_DEPLOYMENT_NAME"   # Model deployment name (Task 2), e.g. gpt-5.1
+---
+> rg                    = "ResourceMoverRG-eastus-southeastasia-sea"    # Existing resource group name (Task 3)
+> location              = "southeastasia"            # Azure region in CLI format, e.g. eastus, eastus2 (Task 3)
+> foundryEndpoint       = "https://<recurso>.openai.azure.com/"  # OpenAI endpoint URL (Task 3), e.g. https://<recurso>.openai.azure.com/
+> foundryDeploymentName = "gpt-5.1"   # Model deployment name (Task 2), e.g. gpt-5.1
+```
+**Qué mirar:** solo cambian las líneas 5-8 («Do not change anything else»). El endpoint es el de la pestaña **OpenAI** (`…openai.azure.com`), no el `services.ai.azure.com/openai/v1/responses` que muestra el despliegue.
+
+✅ **Comprobación:** `configurar.sh` termina con `Placeholders YOUR_ restantes: 0`. Si dice «No hay recurso AIServices» falta el paso 4; si dice «Falta endpoint OpenAI o despliegue» falta el paso 5. En el repo `azdeploy.py` se guarda con `https://<recurso>.openai.azure.com/`: hay que regenerarlo con `configurar.sh`.
+
+Comprobación extra de la VM y la cuota (el AKS es lo que más suele fallar):
+```bash
+az vm list-skus -l southeastasia --size Standard_D2s_v3 --resource-type virtualMachines --query "[0].restrictions[0].reasonCode" -o tsv
+az vm list-usage -l southeastasia --query "[?name.value=='cores'||name.value=='standardDSv3Family'].{familia:name.value, usado:currentValue, limite:limit}" -o table
+```
+Salida real:
+```text
+None
+Familia             Usado    Limite
+------------------  -------  --------
+cores               0        350
+standardDSv3Family  0        350
+```
+`None` = sin restricciones (v4 y v5 también disponibles). Si sale `NotAvailableForSubscription`, cambia `AKS_VM_SIZE` a `Standard_D2s_v4`/`v5`.
+
+## Paso 7 · Completar `k8s/deployment.yaml` y `k8s/service.yaml`
+**Por qué:** el starter trae `deployment.yaml` con tres huecos y `service.yaml` **vacío** (0 líneas); sin ellos no hay contenedor ni forma de llegar desde fuera.
+
+Lo que se añadió (copia de la guía; ya está en [`k8s/`](k8s/)):
+- `deployment.yaml` → contenedor `api` (`ACR_ENDPOINT/aks-api:latest`, `imagePullPolicy: Always`, puerto `http` 8000); **liveness** `GET /healthz` (10 s de retardo, cada 30 s, 3 fallos); **resources** requests 256Mi/250m y limits 512Mi/500m. La readiness (`/readyz`) ya venía.
+- `service.yaml` → `aks-api-service`, `type: LoadBalancer` público (`azure-load-balancer-internal: "false"`), selector `app: aks-api` + `version: v1`, puerto 80 → `http`.
 
 ```bash
-export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-RG=<grupo-de-la-plataforma>
-az aks delete -g $RG -n aks-<hash> --no-wait --yes          # 5-10 min; arrastra el grupo MC_… de los nodos
-az acr delete -g $RG -n acr<hash> --yes
-az cognitiveservices account deployment delete -g $RG -n <recurso-foundry> --deployment-name gpt-5.1
+python3 -I -c "import yaml; [print(f, 'OK', yaml.safe_load(open(f))['kind']) for f in ('k8s/deployment.yaml','k8s/service.yaml')]"
 ```
-Comprobación (solo lectura): `az aks list -g $RG -o table` (pasa por `Deleting` y queda vacío), `az acr list -g $RG -o table` (vacío), `az cognitiveservices account deployment list -g $RG -n <recurso-foundry> -o table` (vacío) y `az group list -o table` (desaparece `MC_…`).
+Salida real:
+```text
+k8s/deployment.yaml OK Deployment
+k8s/service.yaml OK Service
+```
+**Qué mirar:** los dos cargan como YAML. `ACR_ENDPOINT`, `FOUNDRY_ENDPOINT` y `gpt-5-mini` **siguen** como placeholders: los sustituye la opción 5 (o el paso 14).
 
-Kubeconfig de la sesión (carpeta `~/.kube` nueva): `kubectl --kubeconfig ~/.kube/config config delete-context/delete-cluster aks-<hash>` y `config unset users.clusterUser_…`; comprobar con `config get-contexts` (vacío).
+✅ **Comprobación:** si da error de YAML, casi siempre es indentación. Liveness ≠ readiness: liveness reinicia el contenedor; readiness solo lo saca del Service (`/readyz` comprueba que el pod llega a Foundry).
 
-**Al cierre del día:** borrar el recurso Foundry y su proyecto (los creó el portal, Task 1) y **purgar** el soft-delete (`az cognitiveservices account delete` + `az cognitiveservices account purge`), junto con Application Insights / Log Analytics si aparecen. En el inventario final hubo recursos de la plataforma (`MoveCollection`, App Insights, alertas) que desaparecieron sin que los borráramos nosotros; no se tocan.
+## Paso 8 · `azdeploy.py` opción 1: crear el ACR
+**Por qué:** el registro privado del que AKS bajará la imagen. El nombre `acr<hash>` sale de un hash de tu identidad: estable entre ejecuciones y único en Azure.
+```bash
+python3 azdeploy.py      # menú → 1
+```
+✅ **Comprobación** (salida real):
+```bash
+az acr list -g ResourceMoverRG-eastus-southeastasia-sea --query "[].{nombre:name, sku:sku.name, estado:provisioningState, region:location}" -o table
+```
+```text
+Nombre       Sku    Estado     Region
+-----------  -----  ---------  -------------
+acr<hash>    Basic  Succeeded  southeastasia
+```
+**Qué mirar:** `Basic`, `Succeeded`, dentro del grupo de la plataforma. Si no hay filas: aún no has lanzado la opción (a las 18:32 salió vacío por eso) o falló; lee el mensaje del script. La opción es idempotente: si el ACR existe, lo dice.
 
-## Resultado y aprendizajes
-- Flujo completo comprobado: ACR → imagen → AKS → manifiestos → LoadBalancer → API → modelo `gpt-5.1` sin claves (identidad del kubelet + rol *Cognitive Services OpenAI User*).
-- **Proxy de empresa:** `kubectl` local no llega al API server de AKS (`x509`, luego `502 IncompleteCertChain`); la vía es `az aks command invoke`.
-- **Grupos de la plataforma:** el cleanup de la guía (`az group delete`) sería destructivo; se hace por recursos.
-- **Roles:** `system`/`user`/`assistant`; el prompt de sistema vive en la API/configuración, no en el cliente.
+## Paso 9 · Opción 2: construir la imagen en ACR
+**Por qué:** `az acr build` sube `api/` (viene en el zip) y ACR Tasks construye y publica `aks-api:latest` en la nube: no hace falta Docker local ni `docker push` a través del proxy.
+```bash
+python3 azdeploy.py      # menú → 2   (3-5 min; usa --no-logs)
+```
+✅ **Comprobación** (salida real):
+```bash
+az acr repository show-tags -n acr<hash> --repository aks-api -o tsv
+az acr task list-runs -r acr<hash> --query "[].status" -o tsv
+```
+```text
+latest
+Succeeded
+```
+Si el run sale `Failed`: `az acr task logs -r acr<hash> --run-id <id>` (con `--no-logs` el script no enseña el log). Lánzalo siempre desde la carpeta del lab (necesita `api/`).
+
+## Paso 10 · Opción 3: crear el AKS
+**Por qué:** es donde corren los pods. `--attach-acr` da **AcrPull** a la identidad del kubelet sobre el ACR: los nodos bajan la imagen sin `imagePullSecrets` (push y pull son permisos distintos: el push lo hizo ACR con tu `az login`).
+```bash
+python3 azdeploy.py      # menú → 3   (5-10 min)
+```
+Salida real mientras corría:
+```text
+Nombre        Estado    Energia    K8s    Nodos    Vm
+------------  --------  ---------  -----  -------  ---------------
+aks-<hash>    Creating  Running    1.36   1        Standard_D2s_v3
+```
+✅ **Comprobación** (salida real al terminar):
+```bash
+RG=ResourceMoverRG-eastus-southeastasia-sea; AKS=aks-<hash>; ACR=acr<hash>
+az aks show -g $RG -n $AKS --query "{estado:provisioningState, energia:powerState.code, k8s:kubernetesVersion}" -o table
+az role assignment list --scope $(az acr show -g $RG -n $ACR --query id -o tsv) --query "[?roleDefinitionName=='AcrPull'].{rol:roleDefinitionName, tipo:principalType}" -o table
+```
+```text
+Estado     Energia    K8s
+---------  ---------  -----
+Succeeded  Running    1.36
+Rol      Tipo
+-------  ----------------
+AcrPull  ServicePrincipal
+```
+**Qué mirar:** `Succeeded`/`Running` y la fila `AcrPull` (la identidad del kubelet). Si el AKS queda `Failed`/`Canceled`: opción 6 (borra solo un AKS fallido), corrige SKU/cuota y repite la 3. Si falta `AcrPull`: `az aks update -g $RG -n $AKS --attach-acr $ACR`.
+
+## Paso 11 · Opción 4: estado del despliegue
+**Por qué:** consulta (solo lectura) que las tres piezas están listas antes de desplegar.
+```bash
+python3 azdeploy.py      # menú → 4
+```
+Salida real:
+```text
+Checking deployment status...
+
+Foundry Model Deployment (gpt-5.1):
+  Status: Succeeded
+  Model deployed and ready
+
+Azure Container Registry (acr<hash>):
+  Status: Succeeded
+
+AKS Cluster (aks-<hash>):
+  Status: Succeeded
+  AKS cluster is ready for deployment
+```
+✅ **Comprobación:** las tres en `Succeeded`. Si alguna no, no lances la 5: espera (`Creating`) o repite su opción.
+
+## Paso 12 · Opción 5: lanzarla para el rol (y saber que el `apply` fallará)
+**Por qué:** la opción 5 hace cuatro cosas; las dos primeras son útiles y van por `az` (`get-credentials` y el rol *Cognitive Services OpenAI User* al kubelet sobre Foundry), pero la tercera es `kubectl apply` **local**, que el proxy de empresa bloquea. Se lanza igualmente por el rol; el despliegue se hace en los pasos 14-15 con `az`.
+```bash
+python3 azdeploy.py      # menú → 5
+```
+Salida real:
+```text
+Deploying application to AKS...
+
+Getting AKS credentials...
+AKS credentials configured
+
+Assigning Cognitive Services OpenAI User role to AKS identity...
+Role assigned to AKS kubelet identity (may take 1-2 minutes to propagate)
+
+Deploying Kubernetes manifests...
+Error: Apply deployment manifest failed (exit code 1).
+error: error validating "STDIN": error validating data: failed to download openapi: Get "https://aks-<hash>-<…>.hcp.southeastasia.azmk8s.io:443/openapi/v2?timeout=32s": tls: failed to verify certificate: x509: certificate signed by unknown authority; if you choose to ignore these errors, turn validation off with --validate=false
+```
+**Qué mirar:** credenciales ✔ y rol ✔; falla el `apply`. El Service y el `client/.env` no llegan a crearse.
+
+✅ **Comprobación del rol** (solo lectura; salida real `1`):
+```bash
+K=$(az aks show -g $RG -n $AKS --query identityProfile.kubeletidentity.objectId -o tsv)
+F=$(az cognitiveservices account list -g $RG --query "[?kind=='AIServices']|[0].id" -o tsv)
+az role assignment list --assignee $K --scope $F --query "[?roleDefinitionName=='Cognitive Services OpenAI User']|length(@)" -o tsv
+```
+Si sale `0`, asígnalo con `az` sin pasar por la opción 5: `az role assignment create --assignee-object-id $K --assignee-principal-type ServicePrincipal --role "Cognitive Services OpenAI User" --scope $F`.
+
+⚠️ **Lo que pasó (diagnóstico del proxy):**
+1. `x509`: `kubectl` (Go) solo confía en la CA del kubeconfig, la CA privada del cluster; el proxy re-firma con la suya. `az` sí funciona porque usa `REQUESTS_CA_BUNDLE`, que `kubectl` ignora.
+2. Se probó quitar la CA del kubeconfig (`kubectl config unset clusters.<aks>.certificate-authority-data`): el TLS pasó, pero el proxy respondió `502 Bad Gateway · IncompleteCertChain` (no puede validar la CA privada del API server y **bloquea**). `NO_PROXY='.azmk8s.io'` no cambió nada: el proxy es transparente.
+3. Conclusión: desde este PC **no se llega al puerto 443 del API server**. `az aks command invoke` sí funciona: va por ARM (`management.azure.com`), que el proxy deja pasar, y ejecuta el `kubectl` en un pod efímero dentro del cluster.
+
+Esos cambios del paso 2 (kubeconfig) los hizo Claude sin pedirlo; desde entonces el alumno lanza todo lo que escribe y Claude solo verifica en lectura.
+
+## Paso 13 · Renderizar los manifiestos (lo que la opción 5 no llegó a hacer)
+**Por qué:** `deployment.yaml` sigue con `ACR_ENDPOINT`, `FOUNDRY_ENDPOINT` y `gpt-5-mini`. Se sustituyen igual que el script, en una carpeta temporal del repo (`tmp/`, ignorada por git), para no ensuciar `k8s/`.
+```bash
+mkdir -p ../../tmp/aks1
+EP=$(grep -oE 'https://[a-z0-9-]+\.openai\.azure\.com/' azdeploy.py | head -1)
+sed "s|ACR_ENDPOINT|$ACR.azurecr.io|; s|FOUNDRY_ENDPOINT|$EP|; s|gpt-5-mini|gpt-5.1|" k8s/deployment.yaml > ../../tmp/aks1/deployment.yaml
+cp k8s/service.yaml ../../tmp/aks1/service.yaml
+echo "pendientes de sustituir: $(grep -c 'ACR_ENDPOINT\|FOUNDRY_ENDPOINT\|gpt-5-mini' ../../tmp/aks1/deployment.yaml)"
+grep -n "image:\|OPENAI_DEPLOYMENT_NAME" -A1 ../../tmp/aks1/deployment.yaml
+```
+Salida real:
+```text
+pendientes de sustituir: 0
+24:        image: acr<hash>.azurecr.io/aks-api:latest  # Container image from
+25-        imagePullPolicy: Always  # Always pull the latest image from registry
+--
+35:        - name: OPENAI_DEPLOYMENT_NAME
+36-          value: "gpt-5.1"
+```
+✅ **Comprobación:** `pendientes de sustituir: 0`. Si no, revisa que `EP` no esté vacío (`azdeploy.py` todavía con `<recurso>` → regenera con `configurar.sh`).
+
+## Paso 14 · Aplicar con `az aks command invoke` (sustituye al `kubectl apply` local)
+**Por qué:** es el mismo `kubectl apply`, pero ejecutado **dentro** del cluster; `--file` sube cada YAML al pod efímero que corre el comando.
+```bash
+cd ../../tmp/aks1
+az aks command invoke -g $RG -n $AKS \
+  --command "kubectl apply -f deployment.yaml -f service.yaml" \
+  --file deployment.yaml --file service.yaml
+cd -
+```
+Salida real:
+```text
+command started at 2026-11-03 18:50:38+00:00, finished at 2026-11-03 18:50:40+00:00 with exitcode=0
+deployment.apps/aks-api created
+service/aks-api-service created
+```
+**Qué mirar:** `exitcode=0` y dos `created`. (El 03/11 este paso lo ejecutó Claude; el alumno decidió no repetirlo y seguir desde ese estado.)
+
+> **Alternativa local, solo si el PC no tiene proxy:** `az aks get-credentials -g $RG -n $AKS` y `kubectl apply -f ../../tmp/aks1/`. No es la primera opción porque en el PC de empresa falla siempre (paso 12); `az aks command invoke` no necesita kubeconfig.
+
+✅ **Comprobación:** paso 15. Si `exitcode` ≠ 0, lee el error de `kubectl` que devuelve (validación de YAML, nombre…).
+
+## Paso 15 · Verificar el rollout y la IP pública
+**Por qué:** `created` solo dice que el API server aceptó el objeto; hay que ver que el pod arranca (imagen bajada con AcrPull, probes en verde) y que Azure asigna IP al LoadBalancer.
+```bash
+az aks command invoke -g $RG -n $AKS --command "kubectl rollout status deploy/aks-api --timeout=120s; kubectl get deploy,svc,pods -o wide"
+```
+Salida real:
+```text
+command started at 2026-11-03 18:50:54+00:00, finished at 2026-11-03 18:51:13+00:00 with exitcode=0
+Waiting for deployment "aks-api" rollout to finish: 0 of 1 updated replicas are available...
+deployment "aks-api" successfully rolled out
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                                SELECTOR
+deployment.apps/aks-api   1/1     1            1           33s   api          acr<hash>.azurecr.io/aks-api:latest   app=aks-api,version=v1
+
+NAME                      TYPE           CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE    SELECTOR
+service/aks-api-service   LoadBalancer   10.0.77.162   <ip>          80:32297/TCP   33s    app=aks-api,version=v1
+service/kubernetes        ClusterIP      10.0.0.1      <none>        443/TCP        9m8s   <none>
+
+NAME                           READY   STATUS    RESTARTS   AGE   IP           NODE
+pod/aks-api-68c499c9c6-7lw2l   1/1     Running   0          33s   10.224.0.6   aks-nodepool1-<…>-vmss000000
+```
+**Qué mirar:** `successfully rolled out`, `1/1`, `RESTARTS 0` y `EXTERNAL-IP` pública (no `<pending>` ni `10.x`).
+
+✅ **Comprobación:** `ImagePullBackOff` → falta AcrPull o el tag (paso 10/9); `CrashLoopBackOff` → `az aks command invoke … --command "kubectl logs deploy/aks-api"`; `0/1 Running` → readiness: el pod no llega a Foundry (endpoint mal renderizado); IP `<pending>` → espera un minuto.
+
+## Paso 16 · Sacar la IP del LoadBalancer
+**Por qué:** el cliente y `curl` necesitan la IP; la opción 5 la habría escrito en `client/.env`, pero no llegó.
+```bash
+az aks command invoke -g $RG -n $AKS --command "kubectl get svc aks-api-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+```
+Salida real:
+```text
+command started at 2026-11-03 19:02:33+00:00, finished at 2026-11-03 19:02:34+00:00 with exitcode=0
+<ip>
+```
+✅ **Comprobación:** una IP pública. Vacía → el LoadBalancer aún no la tiene; repite en un minuto.
+
+## Paso 17 · Probar los probes desde fuera
+**Por qué:** antes del cliente, confirmar que el LoadBalancer enruta al pod. `/healthz` = proceso vivo; `/readyz` = el pod alcanza Foundry (un `HEAD` al endpoint; **no** prueba aún el rol, eso lo hace la inferencia). Aquí `curl` local sí vale: es HTTP a una IP pública, que el proxy dejó pasar.
+```bash
+IP=<ip>
+curl -sS -m 20 -w '\nHTTP %{http_code}\n' http://$IP/healthz
+curl -sS -m 20 -w '\nHTTP %{http_code}\n' http://$IP/readyz
+```
+Salida real:
+```text
+{"status":"alive","service":"aks-foundry-gateway"}
+HTTP 200
+{"status":"ready","foundry_endpoint":"https://<recurso>.openai.azure.com/"}
+HTTP 200
+```
+✅ **Comprobación:** dos HTTP 200. `/readyz` 503 → el pod no llega a Foundry (endpoint del YAML o red); `curl` colgado → el proxy bloquea esa IP: prueba desde dentro con `az aks command invoke … --command "kubectl exec deploy/aks-api -- python -c \"import urllib.request;print(urllib.request.urlopen('http://aks-api-service/healthz').read().decode())\""`.
+
+## Paso 18 · Preparar el cliente Python
+**Por qué:** el cliente (`client/main.py`) solo habla HTTP con la API; lee `API_ENDPOINT` de `client/.env` con `python-dotenv`. Sus dependencias van en un `.venv` propio (ignorado por git).
+```bash
+cd client
+printf 'API_ENDPOINT=http://%s\n' "$IP" > .env
+cat .env
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip list | grep -i -E "httpx|dotenv"
+```
+Salida real (recortada):
+```text
+API_ENDPOINT=http://<ip>
+Successfully installed anyio-4.16.0 certifi-2026.10.23 h11-0.16.0 httpcore-1.0.9 httpx-0.25.1 idna-3.20 python-dotenv-1.0.0 sniffio-1.3.1 typing_extensions-4.16.0
+python-dotenv     1.0.0
+```
+**Qué mirar:** el cliente **no lleva `openai`** (solo `httpx` y `python-dotenv`): quien llama al modelo es el pod. El primer `grep` se hizo buscando `openai` y no salió: es lo esperado.
+
+✅ **Comprobación:** `.env` con la IP y `httpx`/`python-dotenv` instalados. Si `pip` falla por certificado: `PIP_CERT=/etc/ssl/certs/ca-certificates.crt pip install -r requirements.txt`.
+
+## Paso 19 · Ejecutar el cliente (opciones 1-4)
+**Por qué:** la opción 3/4 es la prueba de extremo a extremo: cliente → LoadBalancer → pod → `gpt-5.1` **sin clave** (identidad del kubelet + rol OpenAI User). La API arma los mensajes con roles (`user`, sin prompt de sistema).
+```bash
+python main.py
+```
+Salida real (opción 4, chat con streaming):
+```text
+  AKS Foundry Gateway API - Client Menu
+============================================================
+API Endpoint: http://<ip>
+============================================================
+1. Check API Health (Liveness)
+2. Check API Readiness (Foundry Connectivity)
+3. Send Inference Request
+4. Start Chat Session (Streaming)
+5. Exit
+============================================================
+Select option (1-5): 4
+
+[*] Starting chat session...
+============================================================
+
+You (type 'exit' to end): hoas del curso IA-200
+Assistant: Te puedo ayudar, pero necesito un poco más de contexto.
+
+¿A qué te refieres con "hoas del curso IA-200"? Puede ser, por ejemplo:
+- ¿Apuntes/hojas de trabajo del curso IA-200?
+- ¿Hojas de ejercicios o prácticas?
+(…el modelo pide más contexto y ofrece ayuda…)
+```
+**Qué mirar:** el texto llega en streaming (SSE desde `/v1/inference/stream`). El prompt tenía una errata y el modelo pidió aclaración: sin prompt de sistema responde como asistente genérico. El alumno confirmó que **las opciones 1-4 funcionan**; solo se guardó la salida literal de la 4.
+
+✅ **Comprobación:** si la 3 o la 4 dan `401`/`403`, el rol aún se propaga (espera 2 min); `404 DeploymentNotFound` → el nombre del despliegue del YAML no coincide con el del paso 5; `500` → `kubectl logs` del pod vía `az aks command invoke`. Si sale `API Endpoint: http://localhost:8000`, no estás en `client/` o falta el `.env`.
+
+---
+
+## Cleanup (por recursos: el grupo es de la plataforma)
+**Por qué no `az group delete`:** la guía dice `az group delete --name <rg-name>`, pero aquí `<rg-name>` sería `ResourceMoverRG-…`, que **no es nuestro** (contiene el Foundry, el `MoveCollection` de la plataforma…). Se borra solo lo que creamos. El AKS va primero porque es lo caro; arrastra solo su grupo de nodos `MC_…`.
+```bash
+deactivate 2>/dev/null; export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+RG=ResourceMoverRG-eastus-southeastasia-sea
+az aks delete -g $RG -n aks-<hash> --no-wait --yes
+az acr delete -g $RG -n acr<hash> --yes
+az cognitiveservices account deployment delete -g $RG -n xlab-<id>-resource --deployment-name gpt-5.1
+```
+Salida real: ninguna (los tres comandos devuelven el control sin imprimir).
+
+Comprobación inmediata (19:17):
+```bash
+az aks list -g $RG --query "[].{n:name, estado:provisioningState}" -o table
+az acr list -g $RG -o table
+az cognitiveservices account deployment list -g $RG -n xlab-<id>-resource --query "[].name" -o tsv
+az group list --query "[].name" -o tsv
+```
+```text
+N             Estado
+------------  --------
+aks-<hash>    Deleting
+
+ResourceMoverRG-eastus-southeastasia-sea
+MC_ResourceMoverRG-eastus-southeastasia-sea_aks-<hash>_southeastasia
+NetworkWatcherRG
+```
+**Qué mirar:** las listas de ACR y de despliegues salieron vacías (borrados al momento); el AKS en `Deleting` (5-10 min) y el `MC_…` desaparece con él. No se relanza el borrado: solo se espera. En ese momento el grupo solo tenía el Foundry y su proyecto; `MoveCollection`, App Insights, Log Analytics y alertas ya no estaban (los retiró la plataforma).
+
+✅ **Verificado** a las 19:57 (desde la sesión del lab 8, leyendo la suscripción del lab 6): `az group list` → solo `ResourceMoverRG-…`; `az aks list` vacío; `az resource list` → **0 recursos**; `az cognitiveservices account list-deleted` vacío (nada que purgar: el Foundry también lo retiró la plataforma). Si en otra repetición el Foundry siguiera, se borra al cierre del día con `az cognitiveservices account delete` + `az cognitiveservices account purge`.
+
+**Kubeconfig local** (lo creó la opción 5 con `get-credentials`): limpiado a las 20:42.
+```bash
+kubectl --kubeconfig ~/.kube/config config delete-context aks-<hash>
+kubectl --kubeconfig ~/.kube/config config delete-cluster aks-<hash>
+kubectl --kubeconfig ~/.kube/config config unset users.clusterUser_ResourceMoverRG-eastus-southeastasia-sea_aks-<hash>
+kubectl --kubeconfig ~/.kube/config config get-contexts
+```
+Salida real (la última línea es el recuento que se hizo en lugar del `get-contexts`):
+```text
+deleted context aks-<hash> from ~/.kube/config
+deleted cluster aks-<hash> from ~/.kube/config
+Property "users.clusterUser_ResourceMoverRG-eastus-southeastasia-sea_aks-<hash>" unset.
+contextos: 0 · clusters: 0 · usuarios: 0
+```
+Esto es solo local (no toca Azure). Al final del día también se hizo `az logout` y `az account clear` (0 cuentas).
+
+## Resumen de incidencias
+| Síntoma | Causa | Arreglo |
+|---|---|---|
+| `az cognitiveservices account list` vacío tras entrar en el portal | El proyecto aún se estaba creando | Esperar y repetir (paso 4) |
+| `x509: certificate signed by unknown authority` en la opción 5 | El proxy re-firma el TLS y `kubectl` solo confía en la CA del cluster | `az aks command invoke` (pasos 13-15) |
+| `502 Bad Gateway · IncompleteCertChain` al quitar la CA del kubeconfig | El proxy transparente no valida la CA privada de AKS y bloquea | Ídem: no hay vía local; `NO_PROXY` no sirve |
+| `client/.env` no existe | La opción 5 se cortó antes de escribirlo | Paso 16 + `printf` del paso 18 |
+| `pip list \| grep openai` vacío en el cliente | El cliente no usa `openai`; lo usa el pod | Lo esperado: comprobar `httpx` y `python-dotenv` |
+| La guía manda `az group delete` | El grupo es de la plataforma | Cleanup por recursos |
+| Claude aplicó YAML y editó el kubeconfig sin pedirlo | Error de proceso | Regla: el alumno ejecuta los cambios; Claude solo lee |
+
+## Artefactos del lab
+| Fichero | Para qué |
+|---|---|
+| `aks-deploy-python-plataforma.zip` | Starter original de la plataforma (fuente de verdad) |
+| `aks-deploy-python.zip` | Starter público, para comparar |
+| `azdeploy.py`, `api/`, `client/`, `k8s/` | Starter extraído; `k8s/*.yaml` ya completados (con placeholders), `azdeploy.py` con el endpoint saneado |
+| `configurar.sh` | Regenera `azdeploy.py` con los 4 valores mediante consultas `az` de lectura |
+
+## Para el examen
+- ACR: el build en la nube (`az acr build`) frente a `docker build/push`; el pull por identidad (**AcrPull** al kubelet, `--attach-acr`) frente a admin user o `imagePullSecrets`.
+- Foundry: el *deployment name* es lo que va como `model`; la API entra con `DefaultAzureCredential` y el rol *Cognitive Services OpenAI User*, sin clave.
+- Probes: liveness (`/healthz`) reinicia; readiness (`/readyz`) saca del Service.
+- `az aks command invoke` ejecuta `kubectl` dentro del cluster vía ARM: útil con API server privado o red que lo bloquea.

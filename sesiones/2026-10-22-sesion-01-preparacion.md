@@ -1,5 +1,10 @@
 # Sesión 1 — 22/10/2026 · Preparación y clase de introducción
 
+## Cómo seguir esta clase (hilo conductor)
+Clase de introducción, sin labs. Orden: [plan del curso](../docs/00-plan/README.md) → [notas de la introducción](../notas/2026-10-22-sesion-01-introduccion.md) → [guías oficiales de los labs](../docs/00-plan/labs-oficiales.md). La siguiente clase empieza instalando `az`: [sesión 2](2026-10-27-sesion-02-contenedores.md).
+
+---
+
 ## Qué se hizo
 - Creado el repo `AI-200` y publicado en GitHub (se hará público para los compañeros). Credenciales locales fuera de git (`github.mb` en `.gitignore`); el push se hace con cabecera temporal, sin guardar el token.
 - Creado el agente especializado en Azure + DevOps, orientado a un perfil SysOps/Kubernetes que aprende la parte de desarrollo. Renombrado a **`oscar`**.
