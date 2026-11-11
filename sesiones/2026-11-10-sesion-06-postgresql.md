@@ -38,3 +38,6 @@ Entrada completa en [`docs/aprendizajes.md`](../docs/aprendizajes.md) (2026-11-1
 - Lab 14 (LP5-03, optimize).
 - Test LP4 y test LP5 (`docs/LP5 - Knowledge check.pdf`); confirmar con el profesor las respuestas de repaso marcadas en `docs/modulos/05-*.md`.
 - Cleanup verificado del lab 14.
+
+## Conversación con Claude Code
+Exportación saneada en [`conversaciones/2026-11-10-sesion-06/`](conversaciones/2026-11-10-sesion-06/): `principal.md` (sesión completa) y tres subagentes que leyeron las guías oficiales de LP5-01 y LP5-02. Se han sustituido el correo, los GUID, el usuario y el TAP del lab, la cuenta de GitHub de empresa y los nombres de persona.
