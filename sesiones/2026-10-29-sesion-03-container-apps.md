@@ -1,5 +1,16 @@
 # Sesión 3 — 29/10/2026 · LP2 Azure Container Apps
 
+## Cómo seguir esta clase (hilo conductor)
+**Idea del día:** Container Apps es «Kubernetes sin gestionar el cluster»: cada cambio crea una **revisión** (como un rollout), los secretos se referencian con `secretref:` y el escalado lo hace KEDA con reglas HTTP.
+
+1. **Teoría LP2:** environment, app, revisión, ingress, secretos y escalado. → [nota del módulo LP2](../docs/modulos/02-container-apps.md).
+2. **Lab 3 · Deploy:** ACR + environment con `azdeploy.py` (pasos 4-7), app con identidad gestionada (8), secreto y variable `secretref:` que crea la revisión 0000002 (9-11), y prueba de la API (12-14). → [README del lab 3](../labs/lp2-01-aca-deploy/README.md).
+3. **Lab 4 · Manage:** romper la app a propósito y arreglarla como en producción: fallo A, una variable que falta (pasos 6-10), y fallo B, un puerto de ingress equivocado (11); después reconstruir la historia con KQL en Log Analytics (12-14). Por qué: es el ciclo síntoma → diagnóstico → corrección → verificación. → [README del lab 4](../labs/lp2-02-aca-manage/README.md).
+4. **Lab 5 · Scale:** pasar de 1 réplica fija a una regla HTTP (pasos 6-7) y ver con carga real cómo sube 1 → 3 → 5 (8-9). Por qué: la regla es concurrencia **por réplica**. → [README del lab 5](../labs/lp2-03-aca-scale/README.md).
+5. **Limpieza** de los tres grupos y **repaso:** [aprendizaje del día](../docs/aprendizajes.md).
+
+---
+
 ## Planning del día (enviado por el docente)
 | Hora | Actividad |
 |---|---|

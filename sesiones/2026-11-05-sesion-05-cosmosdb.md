@@ -1,5 +1,16 @@
 # Sesión 5 — 05/11/2026 · LP4 Azure Cosmos DB for NoSQL
 
+## Cómo seguir esta clase (hilo conductor)
+**Idea del día:** Cosmos DB guarda la «memoria» de una app de IA (chunks de documentos y sus vectores). Todo se paga en **RU**, y el coste depende de cómo consultas (partition key) y de qué índice usas. El acceso es sin claves: Entra ID con dos planos de permisos (ARM y datos).
+
+1. **Teoría LP4:** cuenta → base de datos → contenedor, partition key, RU, vectores e índices. → [nota del módulo LP4](../docs/modulos/04-cosmosdb.md).
+2. **Lab 9 · RAG store:** crear cuenta, BD y contenedor (pasos 5-8), dar los dos roles (6), completar las 4 funciones de acceso (10) y comprobarlas con tests y búsquedas (13-16). Por qué: ver el coste de una lectura puntual frente a una consulta. → [README del lab 9](../labs/lp4-01-cosmos-queries/README.md).
+3. **Lab 10 · Vector search:** contenedor con política vectorial e índice DiskANN (pasos 3-7), funciones de carga y búsqueda (8) y búsqueda por similitud (12-13). → [README del lab 10](../labs/lp4-02-cosmos-vector-search/README.md).
+4. **Lab 11 · Optimize:** el mismo dato en tres índices (`flat`, `quantizedFlat`, `diskANN`), 500 vectores en cada uno, y comparar el coste de escribir y de leer (pasos 12-15). Por qué: elegir índice según volumen y patrón de consulta. → [README del lab 11](../labs/lp4-03-cosmos-optimize/README.md).
+5. **Limpieza:** cada lab trae otra suscripción, así que hay que verificar el borrado **antes** de pasar al siguiente. **Repaso:** [aprendizaje del día](../docs/aprendizajes.md).
+
+---
+
 ## Planning del día (enviado por el docente)
 | Hora | Actividad |
 |---|---|

@@ -1,5 +1,17 @@
 # Sesión 2 — 27/10/2026 · LP1 Alojamiento en contenedores (ACR + App Service)
 
+## Cómo seguir esta clase (hilo conductor)
+**Idea del día:** una imagen de contenedor se construye y guarda en un registro (ACR) y se ejecuta en un servicio que la descarga con una identidad, sin contraseñas (App Service). Es el «registry + runtime» de Kubernetes, pero gestionado por Azure.
+
+1. **Preparar la máquina** (una sola vez): instalar `az` y entender el login con TAP y el proxy de empresa (`REQUESTS_CA_BUNDLE`). → [Lab 1, paso 0-1](../labs/lp1-01-acr-tasks/README.md) y [guía de login](../notas/2026-10-27-guia-az-login-lab.md).
+2. **Teoría LP1:** registro frente a cómputo, ACR Tasks, App Service plan frente a web app. → [nota del módulo LP1](../docs/modulos/01-alojamiento-contenedores.md).
+3. **Lab 1 · ACR Tasks:** construir la imagen *en la nube* (sin Docker local), versionarla y bloquearla. Por qué: es el CI mínimo de Azure, y demuestra que el digest cambia en cada build. → [README del lab 1](../labs/lp1-01-acr-tasks/README.md), pasos 2-9 y cleanup.
+4. **Lab 2 · App Service:** desplegar esa imagen en una web app que la descarga con **identidad gestionada + `AcrPull`** (pasos 6-9), configurar puerto, persistencia y logs (10-13) y probar la API (14-16). Por qué: separar «quién soy» (identidad) de «qué puedo hacer» (rol). → [README del lab 2](../labs/lp1-02-app-service/README.md).
+5. **Limpieza:** borrar el resource group de cada lab y comprobar con `az group exists`.
+6. **Repaso:** [aprendizaje del día](../docs/aprendizajes.md) y [test LP1](../docs/tests/lp1-knowledge-check.md).
+
+---
+
 ## Qué se hizo
 - Añadido el material del día: presentación del LP1, knowledge check y enlace de recursos (los PDF/zip no se suben; `*.pdf` está en `.gitignore`).
 - Nota del módulo con respuestas del knowledge check: `docs/modulos/01-alojamiento-contenedores.md`.
