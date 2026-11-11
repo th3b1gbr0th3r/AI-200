@@ -2,6 +2,39 @@
 
 Un aprendizaje por día, recogido con la skill `/aprender`. Más reciente arriba.
 
+## 2026-11-10 · PostgreSQL: el upsert con `ON CONFLICT` hace idempotente la memoria del agente (y necesita un `UNIQUE`)
+- **Aprendizaje:** `INSERT … ON CONFLICT (cols) DO UPDATE SET … = EXCLUDED.…` inserta la fila si no existe y la **actualiza** si ya existe; es una sola sentencia atómica, idempotente. `EXCLUDED` es la fila que se intentaba insertar. Solo funciona si hay una restricción `UNIQUE` (o PK) **exactamente** sobre esas columnas. En el lab 12, `save_task_state` guardó la tarea `research_postgresql` como `in_progress` y luego como `completed`: el `checkpoint_id` fue **1 las dos veces** (actualizó, no duplicó), `created_at` se mantuvo y `updated_at` cambió (18:22:35 → 18:22:42 UTC). Con `RETURNING id, updated_at` se recibe el resultado sin otra consulta.
+- **Más aprendizajes del día:**
+  - *pgvector en dos planos:* `azure.extensions = vector` con `az` (plano de control, reinicia el servidor) y después `CREATE EXTENSION vector` en `psql` (plano de datos). Índice HNSW con `vector_cosine_ops`, que debe casar con el operador `<=>` de la consulta (si no, no se usa el índice). HNSW se crea con la tabla vacía; IVFFlat necesita datos.
+  - *Entra sin contraseña:* `PGPASSWORD` es un token de Entra (`--resource-type oss-rdbms`, ~1 h). Pedir token y conexión por cada operación costó ≈ 2,4 s por llamada → en producción, `ConnectionPool` (pregunta 2 del test del módulo 1).
+  - *Plataforma:* `The location is restricted` → la política del lab solo admite `centralus` y `Standard_D2ds_v4`/`GeneralPurpose`; leer siempre la guía **de la plataforma** antes de editar `azdeploy.py`.
+  - *Red:* `psql` sale por el 5432 desde el PC de empresa; Netskope solo inspecciona el tráfico web (443), que es lo que rompe `kubectl` contra AKS.
+- **Analogía K8s:** `ON CONFLICT … DO UPDATE` = `kubectl apply` (crea o actualiza según exista, se puede repetir sin efectos raros); el `UNIQUE` hace el papel del nombre + namespace que identifica el objeto; `ON DELETE CASCADE` = recolección por `ownerReferences`.
+- **Comando / código:**
+  ```sql
+  -- la restricción que hace posible el upsert
+  ALTER TABLE task_checkpoints
+  ADD CONSTRAINT unique_conversation_task UNIQUE (conversation_id, task_name);
+
+  -- upsert idempotente con resultado en la misma sentencia
+  INSERT INTO task_checkpoints (conversation_id, task_name, status, checkpoint_data)
+  VALUES (%s, %s, %s, %s)
+  ON CONFLICT (conversation_id, task_name)
+  DO UPDATE SET status = EXCLUDED.status,
+                checkpoint_data = EXCLUDED.checkpoint_data,
+                updated_at = CURRENT_TIMESTAMP
+  RETURNING id, updated_at;
+  ```
+- **Error típico:**
+  - `there is no unique or exclusion constraint matching the ON CONFLICT specification` → falta el `UNIQUE` sobre esas columnas (la guía lo crea **después** de escribir el código) → `ALTER TABLE … ADD CONSTRAINT … UNIQUE (…)`.
+  - El upsert inserta duplicados en vez de actualizar → la columna del `UNIQUE` admite NULL (`conversation_id` sin `NOT NULL`) y en PostgreSQL NULL ≠ NULL → poner `NOT NULL`.
+  - `unrecognized arguments: -n psql-…` en `az postgres flexible-server firewall-rule list` → en los subcomandos de reglas/parámetros el servidor es `--server-name`; `-n` es la regla.
+- **Repaso:** Tu agente guarda el estado de una tarea con `INSERT … ON CONFLICT (conversation_id, task_name) DO UPDATE`. La segunda llamada falla con *no unique or exclusion constraint matching*. ¿Qué haces?
+  - A. Cambiar `DO UPDATE` por `DO NOTHING`.
+  - B. Crear `UNIQUE (conversation_id, task_name)` en la tabla. ✅
+  - C. Crear un índice B-tree solo en `conversation_id`.
+  - D. Envolver el `INSERT` en una transacción explícita.
+
 ## 2026-11-05 · Cosmos DB for NoSQL: el coste se mide en RU y lo decide la forma de la consulta y del índice
 - **Aprendizaje:** en Cosmos DB todo se paga en **RU** y depende de cómo preguntas y de cómo indexas. Una lectura puntual (`id` + partition key) cuesta ≈ 1 RU; una query con partition key va a una partición; una query por otro campo (p. ej. `category`) es **cross-partition** (fan-out) aunque los datos estén en un solo documento. En vectores, `diskANN` es el más caro de **escribir** (≈ 55 RU/doc, ≈ 4,7× `flat` con ≈ 11,7) y a 500 vectores `flat` gana leyendo (10,13 RU frente a 21,60); DiskANN compensa a escala (≈ 95 % de recall). Filtrar por categoría antes del ranking bajó la lectura a 8,15 RU en los tres índices.
 - **Más aprendizajes del día:**

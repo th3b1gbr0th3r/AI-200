@@ -12,6 +12,9 @@ labs/lp2-01-aca-deploy/.env
 labs/lp2-01-aca-deploy/.env.ps1
 labs/lp2-02-aca-manage/.env
 labs/lp2-02-aca-manage/.env.ps1
+# Excepción: LP5 guarda en PGPASSWORD un token de acceso de Entra
+labs/lp5-*/.env
+labs/lp5-*/.env.ps1
 *.pem
 *.key
 .claude/settings.local.json

@@ -12,6 +12,8 @@ Cada lab trae los ficheros de partida de Microsoft (`azdeploy.py`, `api/`, `docu
 | [`lp2-02-aca-manage`](lp2-02-aca-manage/README.md) | Igual que lp2-01 y además la container app con su secreto (opción 3) | API Flask simulada (puerto 8000) | [02-aca-manage-containers](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-container-apps/02-aca-manage-containers.html) |
 | [`lp2-03-aca-scale`](lp2-03-aca-scale/README.md) | Igual que lp2-01 y además `agent-api` con 1 réplica fija | API simulada con `/agent/process` (puerto 8080) + `client/` dashboard de carga | [03-aca-scale-containers](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-container-apps/03-aca-scale-containers.html) |
 | [`lp3-01-aks-deploy`](lp3-01-aks-deploy/README.md) | ACR + AKS dentro del grupo de la plataforma (el proyecto y el modelo `gpt-5.1` de Foundry se crean a mano en el portal); `configurar.sh` rellena los valores | API FastAPI (`/healthz`, `/readyz`, `/v1/inference`) + `client/` + manifiestos `k8s/` | [01-aks-deploy-container](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-kubernetes-service/01-aks-deploy-container.html) |
+| [`lp5-01-pg-agent-backend`](lp5-01-pg-agent-backend/README.md) | Resource group + PostgreSQL Flexible Server solo Entra (+ admin de Entra, contraseña desactivada, firewall `AllowAll`); en la plataforma: `centralus` + `Standard_D2ds_v4`/`GeneralPurpose` | `agent-backend/` (`agent_tools.py` con psycopg + `DefaultAzureCredential`, `test_workflow.py`) + `sql/` | [01-build-agent-tool-backend](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-database-postgresql/01-build-agent-tool-backend.html) |
+| [`lp5-02-pg-vector-search`](lp5-02-pg-vector-search/README.md) | Igual que lp5-01 y además `azure.extensions = vector` (opción 2, reinicia el servidor) | `client/` Flask (búsqueda por similitud con `<=>`, embeddings precalculados de 330 dim) + `sql/` | [02-implement-vector-search](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-database-postgresql/02-implement-vector-search.html) |
 
 ## Cómo funcionan los scripts (patrón común)
 1. **Edición previa:** solo se tocan las variables del principio: `rg` (resource group) y `location`. En el lab 2 además la línea del SKU (`--sku "B1"`; el script trae `P0v3`, y el mensaje impreso `SKU: P0v3` es un texto fijo que no se actualiza, no refleja el SKU real).
@@ -33,7 +35,9 @@ Cada lab trae los ficheros de partida de Microsoft (`azdeploy.py`, `api/`, `docu
 Explicación común (qué hace `az acr create`, `az acr build` y la vinculación por identidad, con las comprobaciones): [`acr-en-azdeploy.md`](acr-en-azdeploy.md). Cada README de lab añade los datos de su propio script.
 
 ## Labs siguientes
-Los labs 7 y 8 de LP3 (AKS) y los demás de LP2 (ACA) se incorporarán a esta tabla al hacerlos.
+Los labs 7 y 8 de LP3 (AKS), los de LP4 (Cosmos DB), el lab 14 de LP5 y los demás de LP2 (ACA) se incorporarán a esta tabla al hacerlos.
+
+Los `.env` de LP5 **no** se versionan: `PGPASSWORD` guarda un token de acceso de Entra.
 
 ## Catálogo de scripts
 Copia de los `azdeploy.py` con su guía de uso en [`../scripts/`](../scripts/README.md).
