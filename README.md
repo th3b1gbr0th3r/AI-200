@@ -15,6 +15,7 @@ Cada clase se sigue en este orden: **sesión** (hilo conductor del día: qué se
 | 4 | 03/11/2026 | LP3 · AKS | [sesión 4](sesiones/2026-11-03-sesion-04-aks.md) | [LP3](docs/modulos/03-aks.md) | [6 · Deploy](labs/lp3-01-aks-deploy/README.md) · [7 · Configure](labs/lp3-02-aks-configure/README.md) · [8 · Troubleshoot](labs/lp3-03-aks-troubleshoot/README.md) |
 | 5 | 05/11/2026 | LP4 · Cosmos DB for NoSQL | [sesión 5](sesiones/2026-11-05-sesion-05-cosmosdb.md) | [LP4](docs/modulos/04-cosmosdb.md) | [9 · RAG store](labs/lp4-01-cosmos-queries/README.md) · [10 · Vector search](labs/lp4-02-cosmos-vector-search/README.md) · [11 · Optimize](labs/lp4-03-cosmos-optimize/README.md) |
 | 6 | 10/11/2026 | LP5 · Azure Database for PostgreSQL | [sesión 6](sesiones/2026-11-10-sesion-06-postgresql.md) | [LP5](docs/modulos/05-postgresql.md) | [12 · Agent backend](labs/lp5-01-pg-agent-backend/README.md) · [13 · Vector search](labs/lp5-02-pg-vector-search/README.md) |
+| — | 11/11/2026 | Repo seguible (sin clase) | [sesión 6b](sesiones/2026-11-11-repo-hilo-conductor.md) | — | — |
 
 Aprendizaje de cada día: [`docs/aprendizajes.md`](docs/aprendizajes.md). Guías oficiales de todos los labs: [`docs/00-plan/labs-oficiales.md`](docs/00-plan/labs-oficiales.md).
 

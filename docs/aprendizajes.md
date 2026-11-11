@@ -2,6 +2,30 @@
 
 Un aprendizaje por día, recogido con la skill `/aprender`. Más reciente arriba.
 
+## 2026-11-11 · Documentar un lab: si no se puede repetir leyendo un solo fichero, no sirve
+- **Aprendizaje:** un lab documentado tiene que poder repetirse de principio a fin leyendo **un único fichero**. Cada paso lleva, en este orden: **por qué** se hace → **comando** → **salida real** → **qué mirar** en ella → **✅ comprobación** (comando, resultado esperado y qué hacer si no coincide). Las incidencias se cuentan en el paso donde ocurrieron. Guardar las salidas en un fichero aparte (`salidas.md`), sin su comando ni su porqué, deja un resumen que nadie puede seguir. Se rehicieron así los 13 labs; modelo: [`labs/lp5-02-pg-vector-search/README.md`](../labs/lp5-02-pg-vector-search/README.md). La sesión del día es el hilo conductor: orden de la clase y enlaces a cada paso.
+- **Analogía K8s:** es la diferencia entre un *runbook* y un volcado de `kubectl get events`. Los eventos dicen qué pasó; el runbook dice qué hacer, por qué y cómo saber que ha funcionado. Un lab bien documentado es un runbook.
+- **Comando / código:** plantilla de un paso.
+  ````markdown
+  ## Paso N · <qué se consigue>
+  **Por qué:** <el problema que resuelve, en 1-3 frases>.
+  ```bash
+  <comando>
+  ```
+  Salida real:
+  ```text
+  <lo que salió, saneado>
+  ```
+  **Qué mirar:** <el campo o la línea que importa>.
+  ✅ **Comprobación:** `<comando>` → debe salir `<valor>`. Si no, <qué hacer>.
+  ````
+- **Error típico:** documentar «lo que hice» en lugar de «cómo se repite» → al volver al lab no se sabe qué comando produjo cada salida ni por qué se ejecutó → un fichero por lab, pasos en orden real, y nunca una salida sin su comando. Si una salida no se guardó, decirlo («salida no guardada») y poner lo esperado; nunca inventarla.
+- **Repaso:** ¿qué le falta a un paso que solo tiene el comando y la salida real?
+  - A) Nada: con el comando y la salida ya se puede repetir.
+  - B) El porqué y la comprobación: sin ellos no sabes para qué sirve el paso ni si te ha salido bien. ✅
+  - C) Una captura de pantalla del portal.
+  - D) El tiempo que tardó.
+
 ## 2026-11-10 · PostgreSQL: el upsert con `ON CONFLICT` hace idempotente la memoria del agente (y necesita un `UNIQUE`)
 - **Aprendizaje:** `INSERT … ON CONFLICT (cols) DO UPDATE SET … = EXCLUDED.…` inserta la fila si no existe y la **actualiza** si ya existe; es una sola sentencia atómica, idempotente. `EXCLUDED` es la fila que se intentaba insertar. Solo funciona si hay una restricción `UNIQUE` (o PK) **exactamente** sobre esas columnas. En el lab 12, `save_task_state` guardó la tarea `research_postgresql` como `in_progress` y luego como `completed`: el `checkpoint_id` fue **1 las dos veces** (actualizó, no duplicó), `created_at` se mantuvo y `updated_at` cambió (18:22:35 → 18:22:42 UTC). Con `RETURNING id, updated_at` se recibe el resultado sin otra consulta.
 - **Más aprendizajes del día:**
