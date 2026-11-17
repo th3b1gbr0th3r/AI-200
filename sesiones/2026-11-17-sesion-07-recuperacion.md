@@ -11,7 +11,7 @@ Orden propuesto: A (LP5) → B (LP6) → C (LP7), de menor a mayor novedad. En c
 
 ## Supuestos sobre las clases perdidas
 - El calendario real es **martes y jueves** (así consta en [`docs/00-plan/README.md`](../docs/00-plan/README.md); las sesiones 1-6 fueron 22/10 jue, 27/10 mar, 29/10 jue, 3/11 mar, 5/11 jue y 10/11 mar). No lunes y miércoles.
-- Por tanto, la clase perdida probable es la del **jueves 12/11 (LP6 Redis)**. La del **martes 17/11 (hoy)** sería LP7, y el **jueves 19/11** la siguiente. **No hay confirmación:** hay que preguntar al docente qué se explicó cada día. El material de LP6 y LP7 ya está descargado en `docs/`, lo que sugiere que ambos se han impartido o están al caer.
+- **Confirmado por el alumno (17/11):** la clase perdida es la del **jueves 12/11 (LP6 Redis)**. LP7 se imparte hoy (**martes 17/11**) o el **jueves 19/11**; queda por confirmar cuál de las dos.
 - Numeración de labs de la plataforma (supuesta por continuidad, LP5 = 12-14): LP6 = labs 15-17 y LP7 = labs 18-20. Confirmarlo en la plataforma.
 - Las presentaciones tienen un ejercicio por módulo: LP6 tres y LP7 tres (Service Bus, Event Grid, Functions MCP). El cuarto ejercicio del índice oficial (Durable Functions) no aparece en el PDF: se trata como **opcional**.
 
