@@ -42,6 +42,9 @@ Las clases son **dos días por semana (martes y jueves)**, por Zoom, de 18:00 a 
 | 2 | mar 27/10/2026 | LP1 Alojamiento en contenedores: ACR Tasks y App Service (labs 1 y 2) | Hecha — `sesiones/2026-10-27-*.md`, `labs/lp1-01-*`, `labs/lp1-02-*` |
 | 3 | jue 29/10/2026 | Corrección del knowledge check del LP1; LP2 Azure Container Apps | Estimada |
 | 4+ | mar 03/11 y siguientes | LP3 AKS y el resto de learning paths | Estimada |
+| 5-6 | 03/11 a 10/11 | LP3 AKS, LP4 Cosmos DB y LP5 PostgreSQL | Hechas — `sesiones/2026-11-0*`, `sesiones/2026-11-10-*` (LP5: lab 13 parcial, lab 14 pendiente) |
+| 7 | mar 17/11/2026 | **LP6 Azure Managed Redis** (clase supuesta del jue 12/11, no asistida) | **PENDIENTE** — objetivo: antes del jue 19/11 por la tarde — `sesiones/2026-11-17-sesion-07-recuperacion.md` |
+| 8 | mar 17/11 o jue 19/11 | **LP7 Servicios backend** (Service Bus, Event Grid, Functions) | **PENDIENTE** — objetivo: antes del jue 19/11 por la tarde — mismo plan |
 
 - Las fechas de las sesiones 3 en adelante se deducen del patrón martes/jueves y de lo que adelantó el docente (Container Apps la siguiente clase, después AKS); **hay que confirmarlas**.
 - El número total de clases y el reparto por learning path pueden diferir de la previsión de 5 días: en las dos primeras sesiones solo se ha cubierto la presentación y el LP1.
