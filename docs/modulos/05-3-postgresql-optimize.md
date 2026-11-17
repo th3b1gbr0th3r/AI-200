@@ -1,6 +1,6 @@
 # LP5 · Módulo 3 · Optimizar la búsqueda vectorial en PostgreSQL
 
-Volver al [índice de LP5](05-postgresql.md). Lab: [Optimize vector search performance](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-database-postgresql/03-optimize-vector-search.html) (carpeta del lab pendiente).
+Volver al [índice de LP5](05-postgresql.md). Lab: [Optimize vector search performance](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-database-postgresql/03-optimize-vector-search.html). Lab del alumno: [LP5-03 · Optimize](../../labs/lp5-03-pg-optimize/README.md) (preparado, sin ejecutar).
 
 ## Parámetros del servidor y de pgvector
 | Parámetro | Qué hace | Valor de ejemplo |

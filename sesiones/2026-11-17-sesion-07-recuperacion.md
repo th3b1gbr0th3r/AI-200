@@ -11,14 +11,14 @@ Orden propuesto: A (LP5) → B (LP6) → C (LP7), de menor a mayor novedad. En c
 
 ## Supuestos sobre las clases perdidas
 - El calendario real es **martes y jueves** (así consta en [`docs/00-plan/README.md`](../docs/00-plan/README.md); las sesiones 1-6 fueron 22/10 jue, 27/10 mar, 29/10 jue, 3/11 mar, 5/11 jue y 10/11 mar). No lunes y miércoles.
-- **Confirmado por el alumno (17/11):** la clase perdida es la del **jueves 12/11 (LP6 Redis)**. LP7 se imparte hoy (**martes 17/11**) o el **jueves 19/11**; queda por confirmar cuál de las dos.
+- **Confirmado por el alumno (17/11):** la clase perdida es la del **jueves 12/11 (LP6 Redis)**. LP7 se imparte hoy (**martes 17/11**), clase que el alumno tampoco sigue en directo y repite el mié 18/11 o el jue 19/11 por la mañana (reserva: sáb 21/11).
 - Numeración de labs de la plataforma (supuesta por continuidad, LP5 = 12-14): LP6 = labs 15-17 y LP7 = labs 18-20. Confirmarlo en la plataforma.
 - Las presentaciones tienen un ejercicio por módulo: LP6 tres y LP7 tres (Service Bus, Event Grid, Functions MCP). El cuarto ejercicio del índice oficial (Durable Functions) no aparece en el PDF: se trata como **opcional**.
 
 ## Plan en casillas (tiempos estimados)
 
-### A. Arrastrado de LP5 — ≈ 1 h 45 min
-- [ ] **A1. Lab 13 (LP5-02), carga y búsqueda** (pasos 10-11 de [su README](../labs/lp5-02-pg-vector-search/README.md)): opcional, solo ver `<=>` funcionando. ≈ 30 min. Cleanup + verificación.
+### A. Arrastrado de LP5 — ≈ 2 h 15 min
+- [ ] **A1. Lab 13 · `[AI-200-LP05M02]` Implement vector search** — **aquí nos quedamos (punto de partida).** El entorno del 10/11 ya se destruyó, así que se repite entero siguiendo [su README](../labs/lp5-02-pg-vector-search/README.md) (pasos 1-9 ya documentados con salida real) y se completan la carga y la búsqueda (pasos 10-11, nunca ejecutados). ≈ 1 h. Cleanup + verificación.
 - [ ] **A2. Lab 14 (LP5-03), optimize vector search** → [guía oficial](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-database-postgresql/03-optimize-vector-search.html). Crear `labs/lp5-03-pg-optimize/README.md`. ≈ 45 min. Cleanup + verificación.
 - [ ] **A3. Tests LP4 y LP5** ([LP5 Knowledge check](../docs/LP5%20-%20Knowledge%20check.pdf)) y repaso de respuestas con `/quiz-lab`. ≈ 30 min.
 
@@ -45,13 +45,16 @@ Presentación: [`AI-200T00A-07`](../docs/AI-200T00A-07_Integrate%20Backend%20Ser
 - [ ] **D3. Preguntar al docente** qué se dio en las clases perdidas y confirmar la numeración de labs.
 
 ## Calendario propuesto
+**Decisión del alumno (17/11):** la clase de hoy (mar 17/11, LP7) tampoco se sigue en directo; se repite **mañana mié 18/11 o el jue 19/11 por la mañana**. Si no fuera posible, **reserva: sáb 21/11 por la mañana** (ya después de la clase del jueves).
+
 | Cuándo | Bloque | Horas |
 |---|---|---|
-| **Mié 18/11** (tarde-noche) | A (LP5) + B (LP6 completo). Si no cabe, B4 pasa a la mañana del jueves | ≈ 5 h 15 min |
-| **Jue 19/11** (mañana) | C (LP7) y D (cierre) | ≈ 4 h (+ 45 min opcional) |
-| **Jue 19/11** (tarde) | Margen y clase normal | — |
+| **Mié 18/11** | A (LP5) + B (LP6 completo). Si da tiempo, empezar C (LP7) | ≈ 5 h 15 min |
+| **Jue 19/11** (mañana) | C (LP7, la sesión de hoy) y D (cierre) | ≈ 4 h (+ 45 min opcional) |
+| **Jue 19/11** (tarde) | Clase normal | — |
+| **Sáb 21/11** (mañana, reserva) | Lo que no haya cabido (prioridad: C → B4 → A2) | — |
 
-**Total estimado: ≈ 9 h** (≈ 10 h con el Durable Functions opcional). Si hay que recortar: A1 y C6 son opcionales; la teoría se puede leer en diagonal apoyándose en los knowledge check.
+**Total estimado: ≈ 9 h** (≈ 10 h con el Durable Functions opcional). Si hay que recortar: C6 es opcional; la teoría se puede leer en diagonal apoyándose en los knowledge check.
 
 ## Recordatorio de limpieza (regla del repo)
 Al terminar **cada** lab, antes de documentar:
@@ -63,4 +66,4 @@ az group exists --name <rg>    # repetir hasta que devuelva false
 Esperado: `false`. Si devuelve `true`, esperar y repetir (el borrado puede tardar minutos; Redis y Service Bus no tienen soft-delete que purgar, pero Key Vault sí si aparece). Si `No subscription found` o `AuthorizationFailed`, las credenciales han caducado: anotarlo como «no verificado». El borrado lo lanza el alumno.
 
 ## Pendientes
-Todo lo anterior. Prioridad: A → B → C antes del jueves 19/11 por la tarde.
+Todo lo anterior. Prioridad: A → B → C antes del jueves 19/11 por la tarde; reserva sábado 21/11 por la mañana.
