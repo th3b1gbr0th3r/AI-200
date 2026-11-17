@@ -43,6 +43,7 @@ Entrada completa en [`docs/aprendizajes.md`](../docs/aprendizajes.md) (2026-11-1
 - **Apoyo:** pgvector en dos planos (`azure.extensions` + `CREATE EXTENSION`), HNSW con `vector_cosine_ops`; token de Entra como contraseña y ≈ 2,4 s por operación sin pool; política del lab (`centralus`, `D2ds_v4`); el 5432 no pasa por Netskope.
 
 ## Pendientes
+- **Plan de recuperación (17/11/2026):** los pendientes de LP5 (lab 13 completo como punto de partida, lab 14, tests LP4/LP5) y las sesiones perdidas LP6 y LP7 están en [`2026-11-17-sesion-07-recuperacion.md`](2026-11-17-sesion-07-recuperacion.md); objetivo: antes del jueves 19/11/2026 por la tarde.
 - **Tras el curso:** pasar la documentación a un agente en la nube del repo de agentes del departamento; primera tarea: memoria de agentes en PostgreSQL (diseño en `notas/claude-code-hooks-skills-agentes.md`, sección «De lab a producción»).
 - Lab 13: opcional, repetir la carga y la búsqueda («Find Similar») si se quiere ver `<=>` funcionando.
 - Lab 14 (LP5-03, optimize).

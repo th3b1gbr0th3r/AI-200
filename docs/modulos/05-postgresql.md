@@ -7,7 +7,7 @@ Notas propias del día 6 (10/11/2026). Presentación del instructor: `docs/AI-20
 |---|---|---|---|
 | 1 | Crear y consultar PostgreSQL (esquema, SQL, Python) | [05-1-postgresql-build-query.md](05-1-postgresql-build-query.md) | [LP5-01 · Agent tool backend](../../labs/lp5-01-pg-agent-backend/README.md) |
 | 2 | Búsqueda vectorial con `pgvector` | [05-2-postgresql-vector-search.md](05-2-postgresql-vector-search.md) | [LP5-02 · Vector search](../../labs/lp5-02-pg-vector-search/README.md) (parcial) |
-| 3 | Optimizar la búsqueda vectorial | [05-3-postgresql-optimize.md](05-3-postgresql-optimize.md) | [Guía oficial](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-database-postgresql/03-optimize-vector-search.html) |
+| 3 | Optimizar la búsqueda vectorial | [05-3-postgresql-optimize.md](05-3-postgresql-optimize.md) | [LP5-03 · Optimize](../../labs/lp5-03-pg-optimize/README.md) (preparado) · [Guía oficial](https://microsoftlearning.github.io/mslearn-azure-ai/instructions/azure-database-postgresql/03-optimize-vector-search.html) |
 
 ## Cosmos DB (LP4) frente a PostgreSQL (LP5)
 | | Cosmos DB | PostgreSQL |
